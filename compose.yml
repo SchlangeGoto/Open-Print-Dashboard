@@ -26,6 +26,11 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
     depends_on:
       - db
+    env_file:
+      - .env
+      - api/.env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   db:
     image: postgres:16-alpine

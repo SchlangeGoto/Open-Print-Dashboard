@@ -18,35 +18,28 @@ class BambuCloudClient:
         self.token = None
         self.user_id = None
 
-    def login(self) -> bool:
+    def login(self, code: str | None = None) -> dict:
         """Authenticate and store the access token.
 
         If the API requests email-based verification, the user is prompted
         interactively for the code and the login request is repeated.
         """
+        payload = {"account": self.email, "password": self.password}
+        if code:
+            payload["code"] = code
         resp = requests.post(
             f"{BASE_URL}/v1/user-service/user/login",
-            json={"account": self.email, "password": self.password},
+            json=payload,
+            timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
 
         # Bambu returns loginType="verifyCode" if 2FA email was sent
-        if data.get("loginType") == "verifyCode":
-            code = input("Enter the verification code from your email: ") # TODO: make the input field a form on the next.js site
-            resp = requests.post(
-                f"{BASE_URL}/v1/user-service/user/login",
-                json={
-                    "account": self.email,
-                    "password": self.password,
-                    "code": code,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-        self.token = data["accessToken"]  # valid ~3 months
-        return True
+        if data.get("loginType") == "verifyCode" and not code:
+            return {"require_code": True}
+        self.token = data["accessToken"]
+        return {"require_code": False}
 
     def _headers(self) -> dict:
         """Return authorization headers for authenticated requests."""

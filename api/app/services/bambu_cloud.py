@@ -1,5 +1,7 @@
 import requests
 
+from app.db.db_helper import get_credentials, get_cloud_token_db
+
 BASE_URL = "https://api.bambulab.com"
 
 class BambuCloudClient:
@@ -12,11 +14,27 @@ class BambuCloudClient:
     - Some accounts require an email verification code during login.
     - `login()` must be called before any request method.
     """
-    def __init__(self, email: str, password: str):
-        self.email = email
-        self.password = password
+    def __init__(self):
+        self.email = None
+        self.password = None
         self.token = None
         self.user_id = None
+
+    def set_credentials(self, email: str, password: str):
+        self.email = email
+        self.password = password
+
+    def _load_credentials(self):
+        """Load credentials from db only when needed."""
+        if not self.email:
+            creds = get_credentials()
+            self.email = creds.get("email")
+            self.password = creds.get("password")
+
+    def _load_token(self):
+        """Load token from db only when needed."""
+        if not self.token:
+            self.token = get_cloud_token_db()
 
     def login(self, code: str | None = None) -> dict:
         """Authenticate and store the access token.
@@ -83,3 +101,16 @@ class BambuCloudClient:
         )
         resp.raise_for_status()
         return resp.json()
+
+    def is_token_valid(self) -> bool:
+        if not self.token:
+            return False
+        try:
+            resp = requests.get(
+                f"{BASE_URL}/v1/design-user-service/my/preference",
+                headers=self._headers(),
+                timeout=10,
+            )
+            return resp.status_code == 200
+        except requests.RequestException:
+            return False

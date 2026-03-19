@@ -1,11 +1,8 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.core.get_db import get_cloud_token_db
-from app.services.bambu_client import BambuClient
-from app.services.bambu_cloud import BambuCloudClient
-from app.services import printer_service as printer_service_module
-from app.services.printer_service import init_printer_service
+from app.db.db_helper import get_cloud_token_db
+from app.services.printer_service import printer_service
 
 router = APIRouter()
 
@@ -22,12 +19,13 @@ class LoginVerifyRequest(BaseModel):
 @router.post("/login/start")
 def login_start(payload: LoginStartRequest):
 
-    if get_cloud_token_db() and get_cloud_token_db().value:
+    if get_cloud_token_db():
         raise HTTPException(status_code=400, detail="Already logged in")
 
     global _pending_login
-    init_printer_service(BambuClient(), BambuCloudClient(payload.email, payload.password))
-    result = printer_service_module.printer_service.login()
+    printer_service.cloud_client.email = payload.email
+    printer_service.cloud_client.password = payload.password
+    result = printer_service.login()
 
 
     if result.get("require_code"):
@@ -49,7 +47,7 @@ def login_verify(payload: LoginVerifyRequest):
     if not _pending_login:
         raise HTTPException(status_code=400, detail="No pending login session")
 
-    result = printer_service_module.printer_service.login(payload.code)
+    result = printer_service.login(payload.code)
 
 
     if result.get("require_code"):

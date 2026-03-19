@@ -4,14 +4,16 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.db.database import create_tables
 from app.routers import health, printers, spools, settings, auth
+from app.services.printer_service import printer_service
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_tables()
-
+    printer_service.client.connect()
     yield
 
+    printer_service.client.disconnect()
 
 app = FastAPI(
     lifespan=lifespan,

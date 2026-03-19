@@ -5,12 +5,11 @@ from app.services.bambu_client import BambuClient
 from app.services.bambu_cloud import BambuCloudClient
 
 
-
 class PrinterService:
     def __init__(
         self,
-        client: BambuClient | None = None,
-        cloud_client: BambuCloudClient | None = None,
+        client: BambuClient,
+        cloud_client: BambuCloudClient,
     ) -> None:
         self.client = client
         self.cloud_client = cloud_client
@@ -30,6 +29,7 @@ class PrinterService:
         result = self.cloud_client.login(code)
         if not result.get("require_code"):
             self.save_token()
+            self.save_credentials()
         return result
 
     def save_token(self) -> None:
@@ -37,9 +37,10 @@ class PrinterService:
             session.add(Settings(key="bambu_cloud_token", value=self.cloud_client.token))
             session.commit()
 
+    def save_credentials(self) -> None:
+        with Session(engine) as session:
+            session.add(Settings(key="bambu_cloud_email", value=self.cloud_client.email))
+            session.add(Settings(key="bambu_cloud_password", value=self.cloud_client.password))
+            session.commit()
 
-printer_service = PrinterService()
-
-def init_printer_service(client: BambuClient, cloud_client: BambuCloudClient):
-    global printer_service
-    printer_service = PrinterService(client, cloud_client)
+printer_service = PrinterService(BambuClient(), BambuCloudClient())

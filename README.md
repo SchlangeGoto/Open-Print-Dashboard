@@ -416,6 +416,12 @@ MIT — do whatever you want, just keep the attribution. See [LICENSE](LICENSE) 
 
 ---
 
+## Use of AI
+
+- Intigrated JetBrains AI assistant for smart code completion
+- Github Copilot for code review and error checking
+- Claude for react components and help with all kinds of things
+
 <div align="center">
 
 Made with ❤️ for the 3D printing community

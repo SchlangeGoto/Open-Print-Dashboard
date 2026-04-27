@@ -1,12 +1,18 @@
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select, func, desc
 from app.db.database import get_session
-from app.db.models import Filament, Spool, PrintJob
+from app.db.models import Filament, Spool, PrintJob, User
+from app.dependencies import get_current_active_user
 
 router = APIRouter()
 
 @router.get("/")
-def get_filaments(session: Session = Depends(get_session)):
+def get_filaments(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     filaments = session.exec(select(Filament)).all()
     result = []
     for f in filaments:
@@ -32,11 +38,20 @@ def get_filaments(session: Session = Depends(get_session)):
     return result
 
 @router.get("/{filament_id}")
-def get_filament(filament_id: int, session: Session = Depends(get_session)):
+def get_filament(
+    filament_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     return session.exec(select(Filament).where(Filament.id == filament_id)).first()
 
 @router.put("/{filament_id}")
-def update_filament(filament_id: int ,filament: Filament, session: Session = Depends(get_session)):
+def update_filament(
+    filament_id: int,
+    filament: Filament,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     existing = session.get(Filament, filament_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Filament not found")
@@ -54,14 +69,22 @@ def update_filament(filament_id: int ,filament: Filament, session: Session = Dep
     return existing
 
 @router.post("/")
-def create_filament(filament: Filament, session: Session = Depends(get_session)):
+def create_filament(
+    filament: Filament,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     session.add(filament)
     session.commit()
     session.refresh(filament)
     return filament
 
 @router.delete("/{filament_id}")
-def delete_filament(filament_id: int, session: Session = Depends(get_session)):
+def delete_filament(
+    filament_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     existing = session.get(Filament, filament_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Filament not found")
@@ -70,11 +93,19 @@ def delete_filament(filament_id: int, session: Session = Depends(get_session)):
     return {"ok": True}
 
 @router.get("/{filament_id}/spools")
-def get_filament_spools(filament_id: int, session: Session = Depends(get_session)):
+def get_filament_spools(
+    filament_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     return session.exec(select(Spool).where(Spool.filament_id == filament_id)).all()
 
 @router.get("/stats/{filament_id}")
-def get_filament_stats(filament_id: int, session: Session = Depends(get_session)):
+def get_filament_stats(
+    filament_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     remaining_g = session.exec(
         select(func.sum(Spool.remaining_g)).where(Spool.filament_id == filament_id)
         ).first() or 0

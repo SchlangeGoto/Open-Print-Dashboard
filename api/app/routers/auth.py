@@ -1,7 +1,11 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.db.db_helper import get_cloud_token
+from app.db.models import User
+from app.dependencies import get_current_active_user
 from app.services.printer_service import printer_service
 from app.core.bambu_exceptions import *
 
@@ -17,7 +21,10 @@ class LoginVerifyRequest(BaseModel):
 _pending_login = False
 
 @router.post("/login/start")
-def login_start(payload: LoginStartRequest):
+def login_start(
+    payload: LoginStartRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
 
     if get_cloud_token():
         raise HTTPException(status_code=400, detail="Already logged in")
@@ -38,7 +45,10 @@ def login_start(payload: LoginStartRequest):
 
 
 @router.post("/login/verify")
-def login_verify(payload: LoginVerifyRequest):
+def login_verify(
+    payload: LoginVerifyRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+):
     global _pending_login
 
     if not _pending_login:

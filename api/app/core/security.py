@@ -8,6 +8,9 @@ import jwt
 from cryptography.fernet import Fernet
 from dotenv import set_key
 from pwdlib import PasswordHash
+from sqlmodel import select, Session
+
+from app.db.models import User
 
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production") # TODO: if secret key is not set, generate one and save to .env (but warn the user that existing tokens will be invalidated)
 ALGORITHM = "HS256"
@@ -15,6 +18,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 
 password_hash = PasswordHash.recommended()
+DUMMY_HASH = password_hash.hash("dummypassword")
 
 def get_or_create_bambu_key() -> str:
     existing = os.getenv("BAMBU_CREDENTIALS_KEY")
@@ -47,9 +51,23 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def get_password_hash(password: str) -> str:
     return password_hash.hash(password)
 
+def authenticate_user(username: str, password: str, session: Session) -> User | None:
+    user = session.exec(select(User).where(User.username == username)).first()
+    if not user:
+        verify_password(password, DUMMY_HASH)
+        return None
+    if not verify_password(password, user.password):
+        return None
+    return user
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
-    expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt

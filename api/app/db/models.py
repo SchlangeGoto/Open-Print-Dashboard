@@ -60,3 +60,9 @@ class User(SQLModel, table=True):
     password: str
     disabled: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+class UserPublic(SQLModel):
+    id: int
+    username: str
+    disabled: bool
+    created_at: datetime

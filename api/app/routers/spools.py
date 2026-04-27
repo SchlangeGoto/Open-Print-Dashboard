@@ -1,14 +1,21 @@
 from datetime import datetime, timezone
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 from app.db.database import get_session
-from app.db.models import Spool, Filament
+from app.db.models import Spool, Filament, User
+from app.dependencies import get_current_active_user
 
 router = APIRouter()
 
 
 @router.get("/")
-def get_spools(filament_id: int | None = None, session: Session = Depends(get_session)):
+def get_spools(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    filament_id: int | None = None,
+    session: Session = Depends(get_session),
+):
     query = select(Spool)
     if filament_id:
         query = query.where(Spool.filament_id == filament_id)
@@ -16,7 +23,10 @@ def get_spools(filament_id: int | None = None, session: Session = Depends(get_se
 
 
 @router.get("/active")
-def get_active_spool(session: Session = Depends(get_session)):
+def get_active_spool(
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     spool = session.exec(select(Spool).where(Spool.active == True)).first()
     if not spool:
         raise HTTPException(status_code=404, detail="No active spool")
@@ -24,7 +34,11 @@ def get_active_spool(session: Session = Depends(get_session)):
 
 
 @router.get("/{spool_id}")
-def get_spool(spool_id: int, session: Session = Depends(get_session)):
+def get_spool(
+    spool_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spool not found")
@@ -32,7 +46,11 @@ def get_spool(spool_id: int, session: Session = Depends(get_session)):
 
 
 @router.post("/")
-def create_spool(spool: Spool, session: Session = Depends(get_session)):
+def create_spool(
+    spool: Spool,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     if spool.filament_id:
         filament = session.get(Filament, spool.filament_id)
         if not filament:
@@ -44,7 +62,12 @@ def create_spool(spool: Spool, session: Session = Depends(get_session)):
 
 
 @router.put("/{spool_id}")
-def update_spool(spool_id: int, spool: Spool, session: Session = Depends(get_session)):
+def update_spool(
+    spool_id: int,
+    spool: Spool,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     existing = session.get(Spool, spool_id)
     if not existing:
         raise HTTPException(status_code=404, detail="Spool not found")
@@ -63,7 +86,11 @@ def update_spool(spool_id: int, spool: Spool, session: Session = Depends(get_ses
 
 
 @router.delete("/{spool_id}")
-def delete_spool(spool_id: int, session: Session = Depends(get_session)):
+def delete_spool(
+    spool_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spool not found")
@@ -73,7 +100,11 @@ def delete_spool(spool_id: int, session: Session = Depends(get_session)):
 
 
 @router.put("/{spool_id}/activate")
-def activate_spool(spool_id: int, session: Session = Depends(get_session)):
+def activate_spool(
+    spool_id: int,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     spool = session.get(Spool, spool_id)
     if not spool:
         raise HTTPException(status_code=404, detail="Spool not found")
@@ -89,7 +120,11 @@ def activate_spool(spool_id: int, session: Session = Depends(get_session)):
 
 
 @router.post("/scan")
-def scan_nfc(payload: dict, session: Session = Depends(get_session)):
+def scan_nfc(
+    payload: dict,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     uid = payload.get("uid")
     if not uid:
         raise HTTPException(status_code=400, detail="uid is required")
@@ -112,7 +147,11 @@ def scan_nfc(payload: dict, session: Session = Depends(get_session)):
 
 
 @router.post("/scan/assign")
-def assign_nfc(payload: dict, session: Session = Depends(get_session)):
+def assign_nfc(
+    payload: dict,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    session: Session = Depends(get_session),
+):
     """Assign a scanned NFC uid to an existing spool."""
     uid = payload.get("uid")
     spool_id = payload.get("spool_id")

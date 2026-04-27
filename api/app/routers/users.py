@@ -10,10 +10,10 @@ from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ACCESS_TOKEN_EXPIRE_MINUTES, authenticate_user,
 )
 from app.db.database import get_session
-from app.db.models import User, Settings, Token
+from app.db.models import User, Settings, Token, UserPublic
 from app.dependencies import get_current_active_user
 from app.services.printer_service import printer_service
 
@@ -26,7 +26,7 @@ class UserCreate(BaseModel):
 
 
 @router.get("/")
-def get_user():
+def get_user(current_user: Annotated[User, Depends(get_current_active_user)]):
     return printer_service.cloud_client.get_user_profile()
 
 
@@ -61,24 +61,24 @@ def login_for_access_token(
     The docs say this endpoint MUST accept form data (not JSON)
     and return access_token + token_type.
     """
-    user = session.exec(select(User).where(User.username == form_data.username)).first()
-    if not user or not verify_password(form_data.password, user.password):
+    user = authenticate_user(form_data.username, form_data.password, session)
+    if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        data={"sub": user.username}, expires_delta=access_token_expires
     )
     return Token(access_token=access_token, token_type="bearer")
 
 
 @router.get("/me")
-def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]) -> UserPublic:
     """Protected route — the docs use this as the example of a secured endpoint."""
-    return {"username": current_user.username}
+    return current_user
 
 
 @router.get("/setup-status")

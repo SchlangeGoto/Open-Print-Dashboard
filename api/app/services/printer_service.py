@@ -1,3 +1,4 @@
+from app.core.config import config
 from app.db.db_helper import save_token as db_save_token, save_credentials as db_save_credentials
 from app.services.bambu_client import BambuClient
 from app.services.bambu_cloud import BambuCloudClient
@@ -30,8 +31,8 @@ class PrinterService:
 
 def _create_printer_service() -> PrinterService:
     cloud_client = BambuCloudClient()
-    mqtt_client = BambuClient()
-    mqtt_client._print_job_service = PrintJobService(cloud_client, mqtt_client.serial)
+    print_job_service = PrintJobService(cloud_client, config.printer_serial)
+    mqtt_client = BambuClient(print_job_service=print_job_service)
     return PrinterService(mqtt_client, cloud_client)
 
 

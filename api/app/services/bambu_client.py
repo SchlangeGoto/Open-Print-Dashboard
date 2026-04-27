@@ -112,7 +112,7 @@ class MqttThread(threading.Thread):
                 pass
 
 class BambuClient:
-    def __init__(self):
+    def __init__(self, print_job_service=None):
         self.host = config.printer_ip
         self.port = 8883
         self.serial = config.printer_serial
@@ -120,7 +120,7 @@ class BambuClient:
 
         self._connected = False
         self._current_status: dict = {}
-        self._print_job_service = None  # injected after construction
+        self._print_job_service = print_job_service
 
         self.client: mqtt.Client | None = None
         self._mqtt_thread: MqttThread | None = None

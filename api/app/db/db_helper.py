@@ -34,7 +34,6 @@ def save_cloud_token(token: str) -> bool:
             setting.value = encrypt_secret(token)
         else:
             session.add(Settings(key="bambu_cloud_token", value=encrypt_secret(token)))
-
         session.commit()
     return True
 

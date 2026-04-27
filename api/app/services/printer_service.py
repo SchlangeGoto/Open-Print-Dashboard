@@ -1,4 +1,7 @@
 from sqlmodel import Session
+
+from app.core.security import encrypt_secret
+from app.db import db_helper
 from app.db.database import engine
 from app.db.models import Settings
 from app.services.bambu_client import BambuClient
@@ -23,14 +26,7 @@ class PrinterService:
         self.save_credentials()
 
     def save_token(self) -> None:
-        with Session(engine) as session:
-            setting = session.get(Settings, "bambu_cloud_token")
-            if setting:
-                setting.value = self.cloud_client.token
-            else:
-                setting = Settings(key="bambu_cloud_token", value=self.cloud_client.token)
-                session.add(setting)
-            session.commit()
+        db_helper.save_cloud_token(self.cloud_client.token)
 
     def save_credentials(self) -> None:
         with Session(engine) as session:

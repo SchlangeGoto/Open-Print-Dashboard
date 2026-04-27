@@ -2,25 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardTitle, CardDescription } from "@/components/ui/Card";
+import type { PrinterStatus, PrinterDevice, FirmwareInfo } from "@/lib/types";
+import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
   Printer,
-  Wifi,
   WifiOff,
   Thermometer,
   Fan,
   Gauge,
-  Layers,
-  HardDrive,
   RefreshCw,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 
 export default function PrinterPage() {
-  const [status, setStatus] = useState<any>(null);
-  const [devices, setDevices] = useState<any[]>([]);
-  const [firmware, setFirmware] = useState<any>(null);
+  const [status, setStatus] = useState<PrinterStatus | null>(null);
+  const [devices, setDevices] = useState<PrinterDevice[]>([]);
+  const [firmware, setFirmware] = useState<FirmwareInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
   async function load() {
@@ -197,7 +195,7 @@ export default function PrinterPage() {
         <Card>
           <CardTitle>Firmware</CardTitle>
           <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4">
-            {(firmware.firmware || []).map((fw: any) => (
+            {(firmware.firmware || []).map((fw) => (
               <div key={`${fw.name}-${fw.version}`} className="rounded-lg bg-zinc-800/50 p-3">
                 <p className="text-xs text-muted">{fw.name}</p>
                 <p className="text-sm font-mono mt-1">{fw.version}</p>

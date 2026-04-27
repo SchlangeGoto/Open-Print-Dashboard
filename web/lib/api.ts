@@ -6,6 +6,9 @@ import type {
   PrinterDevice,
   Setting,
   SetupStatus,
+  FirmwareInfo,
+  FilamentStats,
+  NfcScanResult,
 } from "@/lib/types";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -106,12 +109,12 @@ export const api = {
   getTasks: (limit = 20) => request<PrintJob[]>(`/printers/tasks?limit=${limit}`),
   getPrinterTasks: (serial: string, limit = 20) =>
     request<PrintJob[]>(`/printers/${serial}/tasks?limit=${limit}`),
-  getFirmware: (serial: string) => request<any>(`/printers/${serial}/firmware`),
-  getProjects: () => request<any[]>("/printers/projects"),
-  getMessages: () => request<any[]>("/printers/messages"),
+  getFirmware: (serial: string) => request<FirmwareInfo>(`/printers/${serial}/firmware`),
+  getProjects: () => request<Record<string, unknown>[]>("/printers/projects"),
+  getMessages: () => request<Record<string, unknown>[]>("/printers/messages"),
 
   // Users (Bambu profile)
-  getBambuProfile: () => request<any>("/users/"),
+  getBambuProfile: () => request<Record<string, unknown>>("/users/"),
 
   // Print Jobs
   getPrintJobs: () => request<PrintJob[]>("/prints/"),
@@ -130,7 +133,7 @@ export const api = {
   deleteFilament: (id: number) =>
     request<{ ok: boolean }>(`/filaments/${id}`, { method: "DELETE" }),
   getFilamentSpools: (id: number) => request<Spool[]>(`/filaments/${id}/spools`),
-  getFilamentStats: (id: number) => request<any>(`/filaments/stats/${id}`),
+  getFilamentStats: (id: number) => request<FilamentStats>(`/filaments/stats/${id}`),
 
   // Spools
   getSpools: (filamentId?: number) =>
@@ -146,9 +149,9 @@ export const api = {
   activateSpool: (id: number) =>
     request<Spool>(`/spools/${id}/activate`, { method: "PUT" }),
   scanNfc: (uid: string) =>
-    request<any>("/spools/scan", { method: "POST", body: JSON.stringify({ uid }) }),
+    request<NfcScanResult>("/spools/scan", { method: "POST", body: JSON.stringify({ uid }) }),
   assignNfc: (uid: string, spoolId: number) =>
-    request<any>("/spools/scan/assign", {
+    request<NfcScanResult>("/spools/scan/assign", {
       method: "POST",
       body: JSON.stringify({ uid, spool_id: spoolId }),
     }),

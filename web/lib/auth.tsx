@@ -8,7 +8,6 @@ import {
   ReactNode,
 } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { api } from "@/lib/api";
 
 interface AuthContextType {
   username: string | null;
@@ -25,29 +24,22 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [username, setUsername] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [username, setUsername] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem("opd_user");
+  });
+  const [isLoading] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    const stored = localStorage.getItem("opd_user");
-    if (stored) {
-      setUsername(stored);
-    }
-    setIsLoading(false);
-  }, []);
-
-  useEffect(() => {
-    if (isLoading) return;
-
     // Public routes that don't need auth
     const isPublicRoute = pathname === "/" || pathname.startsWith("/setup");
 
     if (!username && !isPublicRoute) {
       router.push("/");
     }
-  }, [username, isLoading, pathname, router]);
+  }, [username, pathname, router]);
 
   function login(name: string) {
     localStorage.setItem("opd_user", name);

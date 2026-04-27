@@ -79,8 +79,8 @@ export default function SetupPage() {
         login(res.username);
         setStep("bambu");
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to create account");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to create account");
     } finally {
       setBusy(false);
     }
@@ -99,8 +99,8 @@ export default function SetupPage() {
       } else {
         setStep("printer");
       }
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Login failed");
     } finally {
       setBusy(false);
     }
@@ -120,8 +120,8 @@ export default function SetupPage() {
       } else {
         setStep("printer");
       }
-    } catch (err: any) {
-      setError(err.message || "Verification failed");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setBusy(false);
     }
@@ -138,8 +138,8 @@ export default function SetupPage() {
       await api.saveSetting("printer_serial", printerSerial);
       await api.saveSetting("printer_access_code", printerAccessCode);
       setStep("done");
-    } catch (err: any) {
-      setError(err.message || "Failed to save printer settings");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save printer settings");
     } finally {
       setBusy(false);
     }

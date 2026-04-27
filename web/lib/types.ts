@@ -84,3 +84,26 @@ export interface SetupStatus {
   printer_configured: boolean;
   setup_complete: boolean;
 }
+
+export interface FirmwareModule {
+  name: string;
+  version: string;
+  [key: string]: unknown;
+}
+
+export interface FirmwareInfo {
+  firmware?: FirmwareModule[];
+  [key: string]: unknown;
+}
+
+export interface FilamentStats {
+  total_used_g?: number;
+  total_cost?: number;
+  [key: string]: unknown;
+}
+
+export interface NfcScanResult {
+  spool_id?: number | null;
+  uid?: string;
+  [key: string]: unknown;
+}

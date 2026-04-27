@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardTitle } from "@/components/ui/Card";
+import type { PrintJob } from "@/lib/types";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -19,9 +20,9 @@ import { History, Trash2, Eye } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function PrintsPage() {
-  const [prints, setPrints] = useState<any[]>([]);
+  const [prints, setPrints] = useState<PrintJob[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedPrint, setSelectedPrint] = useState<any>(null);
+  const [selectedPrint, setSelectedPrint] = useState<PrintJob | null>(null);
 
   async function load() {
     try {
@@ -110,6 +111,7 @@ export default function PrintsPage() {
                     <td className="py-3 pr-4">
                       <div className="flex items-center gap-3">
                         {p.cover && (
+                          // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={p.cover}
                             alt=""
@@ -174,6 +176,7 @@ export default function PrintsPage() {
         {selectedPrint && (
           <div className="space-y-3">
             {selectedPrint.cover && (
+              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={selectedPrint.cover}
                 alt=""

@@ -2,14 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardTitle } from "@/components/ui/Card";
+import type { Filament } from "@/lib/types";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { formatWeight, formatCurrency } from "@/lib/utils";
-import { Palette, Plus, Pencil, Trash2, Package } from "lucide-react";
+import { formatWeight } from "@/lib/utils";
+import { Palette, Plus, Pencil, Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 const emptyFilament = {
@@ -25,7 +26,7 @@ const emptyFilament = {
 };
 
 export default function FilamentsPage() {
-  const [filaments, setFilaments] = useState<any[]>([]);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -47,7 +48,7 @@ export default function FilamentsPage() {
     setModalOpen(true);
   }
 
-  function openEdit(f: any) {
+  function openEdit(f: Filament) {
     setForm({
       brand: f.brand,
       material: f.material,
@@ -75,8 +76,8 @@ export default function FilamentsPage() {
       }
       setModalOpen(false);
       load();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     }
   }
 
@@ -86,8 +87,8 @@ export default function FilamentsPage() {
       await api.deleteFilament(id);
       toast.success("Filament deleted");
       load();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete");
     }
   }
 

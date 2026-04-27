@@ -52,8 +52,8 @@ export default function Home() {
       // loginUser stores the token; use the submitted username for display
       login(loginUsername);
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Invalid credentials");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Invalid credentials");
     } finally {
       setBusy(false);
     }

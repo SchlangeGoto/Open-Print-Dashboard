@@ -58,7 +58,6 @@ export default function DashboardPage() {
   const totalPrintTime = prints.reduce((sum, p) => sum + (p.duration_seconds || 0), 0);
   const totalCost = prints.reduce((sum, p) => sum + (p.estimated_cost || 0), 0);
   const totalSpoolsCount = spools.length;
-  const activeSpoolsCount = spools.filter((s) => s.active).length;
   const totalRemainingG = spools.reduce((sum, s) => sum + (s.remaining_g || 0), 0);
 
   const currentPrint = status?.gcode_state === "RUNNING" ? status : null;

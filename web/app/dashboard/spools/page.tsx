@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { Card, CardTitle } from "@/components/ui/Card";
+import type { Spool, Filament } from "@/lib/types";
+import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Badge } from "@/components/ui/Badge";
@@ -13,8 +14,8 @@ import { Package, Plus, Pencil, Trash2, Zap, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function SpoolsPage() {
-  const [spools, setSpools] = useState<any[]>([]);
-  const [filaments, setFilaments] = useState<any[]>([]);
+  const [spools, setSpools] = useState<Spool[]>([]);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -57,7 +58,7 @@ export default function SpoolsPage() {
     setModalOpen(true);
   }
 
-  function openEdit(s: any) {
+  function openEdit(s: Spool) {
     setForm({
       filament_id: String(s.filament_id ?? ""),
       total_weight_g: s.total_weight_g,
@@ -89,8 +90,8 @@ export default function SpoolsPage() {
       }
       setModalOpen(false);
       load();
-    } catch (err: any) {
-      toast.error(err.message || "Failed to save");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to save");
     }
   }
 
@@ -99,8 +100,8 @@ export default function SpoolsPage() {
       await api.activateSpool(id);
       toast.success("Spool activated — now loaded in printer");
       load();
-    } catch (err: any) {
-      toast.error(err.message);
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to activate");
     }
   }
 

@@ -6,17 +6,10 @@ import uuid
 
 import logging
 
-from datetime import datetime, timezone
-
-from sqlmodel import desc
-
-from app.core.commands import *
-from app.core.config import config
 import paho.mqtt.client as mqtt
-from sqlmodel import Session, select
 
-from app.db.database import engine
-from app.db.models import PrintJob, Spool, Filament
+from app.core.commands import GET_VERSION, PUSH_ALL, START_PUSH
+from app.core.config import config
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -125,8 +118,9 @@ class BambuClient:
         self.serial = config.printer_serial
         self.access_code = config.printer_access_code
 
-        self._connected =False
+        self._connected = False
         self._current_status: dict = {}
+        self._print_job_service = None  # injected after construction
 
         self.client: mqtt.Client | None = None
         self._mqtt_thread: MqttThread | None = None
@@ -259,187 +253,18 @@ class BambuClient:
 
     def _on_print_finished(self, state: str):
         """Called when a print completes or fails."""
-        t = threading.Thread(target=self._save_print_job, daemon=True)
-        t.start()
+        if self._print_job_service:
+            t = threading.Thread(target=self._print_job_service.save_print_job, daemon=True)
+            t.start()
 
     def _on_print_started(self):
-        t = threading.Thread(target=self._save_print_job_init, daemon=True)
-        t.start()
-
-    def _save_print_job_init(self):
-        from app.services.printer_service import printer_service
-        """Fetch cloud data and save PrintJob + deduct from spool."""
-        try:
-            task = printer_service.cloud_client.get_latest_task_for_printer(self.serial)
-            if not task:
-                logger.warning("No cloud task found on print start")
-                return
-
-            trys = 0
-            maxTrys = 30
-            while task.get("status") != 4 and trys < maxTrys:
-                time.sleep(1)
-                trys += 1
-                task = printer_service.cloud_client.get_latest_task_for_printer(self.serial)
-                if not task:
-                    break
-
-            if trys >= maxTrys:
-                logger.error(f"Failed to fetch cloud task after {maxTrys} tries")
-                return
-
-            with Session(engine) as session:
-                active_spool = session.exec(
-                    select(Spool).where(Spool.active == True)
-                ).first()
-
-                # save print job
-                job = PrintJob(
-                    spool_id=active_spool.id if active_spool else None,
-                    title=task.get("title", self._current_status.get("subtask_name", "Unknown")),
-                    cover=task.get("cover"),
-                    weight=task.get("weight"), # Grams
-                    duration_seconds=task.get("costTime"), # Seconds
-                    start_time=task.get("startTime"), # weird ISO 8601 notation
-                    status=task.get("status"), # even weirder, its an int: 4 == "RUNNING", 3 == "CANCElED (maybe also "FAILED"??), 2 == "FINISHED", 1 == ??? (maybe FAILED)"
-                    bambu_task_id=str(task.get("id")),
-                    device_id=self.serial,
-                    ams_detail_mapping=str(task.get("amsDetailMapping", [])),
-                )
-                session.add(job)
-
-                session.commit()
-                logger.info(f"PrintJob saved: {job.title} — {task.get('weight')}g used")
-
-        except Exception as e:
-            logger.error(f"Failed to save print job: {e}")
-
-    def _save_print_job(self):
-        from app.services.printer_service import printer_service
-
-        """Fetch cloud data and save PrintJob + deduct from spool."""
-
-        try:
-            # fetch latest task from cloud
-            task = printer_service.cloud_client.get_latest_task_for_printer(self.serial)
-
-            if not task:
-                logger.warning("No cloud task found after print finished")
-                return
-
-            logger.info("Print finished — waiting for cloud to catch up...")
-
-            trys = 0
-            maxTrys = 30
-            while task.get("status") == 4 and trys < maxTrys:
-                time.sleep(1)
-                trys += 1
-                task = printer_service.cloud_client.get_latest_task_for_printer(self.serial)
-                if not task:
-                    break
-
-            if trys >= maxTrys:
-                logger.error(f"Failed to fetch cloud task after {maxTrys} tries")
-                return
-
-
-            with Session(engine) as session:
-                # find active spool
-                active_spool = session.exec(
-                    select(Spool).where(Spool.active == True)
-                ).first()
-
-                estimated_cost = None
-                if active_spool and task.get("weight"):
-                    # get average price from last 5 spools of same filament
-                    recent_spools = session.exec(
-                        select(Spool)
-                        .where(Spool.filament_id == active_spool.filament_id)
-                        .where(Spool.price_per_kg != None)
-                        .order_by(desc(Spool.created_at))
-                        .limit(5)
-                    ).all()
-
-                    if recent_spools:
-                        avg_price = sum(s.price_per_kg for s in recent_spools) / len(recent_spools)
-                        estimated_cost = round((task["weight"] / 1000) * avg_price, 2)
-                        logger.info(f"Estimated cost: €{estimated_cost} (avg €{avg_price}/kg)")
-
-                # save print job
-                job = session.exec(select(PrintJob).where(PrintJob.bambu_task_id == str(task.get("id")))).first()
-
-                if not job:
-                    # init was missed — create fresh
-                    job = PrintJob(
-                        bambu_task_id=str(task.get("id")),
-                        device_id=self.serial,
-                    )
-                    session.add(job)
-
-                job.spool_id=active_spool.id if active_spool else None
-                job.title=task.get("title")
-                job.cover=task.get("cover")
-                job.weight=task.get("weight")
-                job.estimated_cost=estimated_cost
-                job.duration_seconds=task.get("costTime")
-                job.start_time=task.get("startTime")
-                job.finished_at=task.get("endTime")
-                job.status=task.get("status")
-                job.bambu_task_id=str(task.get("id"))
-                job.device_id=self.serial
-                job.ams_detail_mapping=str(task.get("amsDetailMapping", []))
-
-                session.add(job)
-
-                self._deduct_filament_from_spools(session, task)
-
-                session.commit()
-                logger.info(f"PrintJob saved: {job.title} — {task.get('weight')}g used")
-
-        except Exception as e:
-            logger.error(f"Failed to save print job: {e}")
-
-    def _deduct_filament_from_spools(self, session, task: dict):
-        """
-        Deduct filament usage per color slot from the correct spools.
-        Falls back to deducting from active spool if mapping unavailable.
-        """
-        ams_mapping = task.get("amsDetailMapping", [])
-
-        if not ams_mapping:
-            active_spool = session.exec(
-                select(Spool).where(Spool.active == True)
-            ).first()
-            if active_spool and task.get("weight"):
-                active_spool.remaining_g = max(0, active_spool.remaining_g - task["weight"])
-                active_spool.last_used_at = datetime.now(timezone.utc)
-                logger.info(f"Deducted {task['weight']}g from active spool {active_spool.id}")
-            return
-
-        for slot in ams_mapping:
-            used_g = slot.get("weight", 0)
-            if not used_g:
-                continue
-
-            filament_id = slot.get("filamentId")  # e.g. "GFL99"
-            filament_type = slot.get("filamentType")  # e.g. "PLA"
-
-            spool = session.exec(
-                select(Spool)
-                .join(Filament, Spool.filament_id == Filament.id)
-                .where(Filament.bambu_info_idx == filament_id)
-                .where(Spool.active == True)
-            ).first()
-
-            if not spool:
-                spool = session.exec(
-                    select(Spool).where(Spool.active == True)
-                ).first()
-
-            if spool:
-                spool.remaining_g = max(0, spool.remaining_g - used_g)
-                spool.last_used_at = datetime.now(timezone.utc)
-                logger.info(f"Deducted {used_g}g ({filament_type}) from spool {spool.id}")
+        if self._print_job_service:
+            t = threading.Thread(
+                target=self._print_job_service.save_print_job_init,
+                args=(self._current_status,),
+                daemon=True,
+            )
+            t.start()
 
     def _handle_info_update(self, info_data: dict):
         """Handle firmware version info."""

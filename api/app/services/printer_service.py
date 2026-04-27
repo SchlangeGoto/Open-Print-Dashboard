@@ -1,8 +1,7 @@
-from sqlmodel import Session
-from app.db.database import engine
-from app.db.models import Settings
+from app.db.db_helper import save_token as db_save_token, save_credentials as db_save_credentials
 from app.services.bambu_client import BambuClient
 from app.services.bambu_cloud import BambuCloudClient
+from app.services.print_job_service import PrintJobService
 
 
 class PrinterService:
@@ -23,26 +22,17 @@ class PrinterService:
         self.save_credentials()
 
     def save_token(self) -> None:
-        with Session(engine) as session:
-            setting = session.get(Settings, "bambu_cloud_token")
-            if setting:
-                setting.value = self.cloud_client.token
-            else:
-                setting = Settings(key="bambu_cloud_token", value=self.cloud_client.token)
-                session.add(setting)
-            session.commit()
+        db_save_token(self.cloud_client.token)
 
     def save_credentials(self) -> None:
-        with Session(engine) as session:
-            for key, value in [
-                ("bambu_cloud_email", self.cloud_client.email),
-                ("bambu_cloud_password", self.cloud_client.password),
-            ]:
-                setting = session.get(Settings, key)
-                if setting:
-                    setting.value = value
-                else:
-                    session.add(Settings(key=key, value=value))
-            session.commit()
+        db_save_credentials(self.cloud_client.email, self.cloud_client.password)
 
-printer_service = PrinterService(BambuClient(), BambuCloudClient())
+
+def _create_printer_service() -> PrinterService:
+    cloud_client = BambuCloudClient()
+    mqtt_client = BambuClient()
+    mqtt_client._print_job_service = PrintJobService(cloud_client, mqtt_client.serial)
+    return PrinterService(mqtt_client, cloud_client)
+
+
+printer_service = _create_printer_service()

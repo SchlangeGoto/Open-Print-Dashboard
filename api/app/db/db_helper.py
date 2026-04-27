@@ -19,7 +19,7 @@ def get_credentials() -> dict:
         }
 
 
-def get_cloud_token() -> str | None:
+def get_cloud_token_db() -> str | None:
     with Session(engine) as session:
         setting = session.get(Settings, "bambu_cloud_token")
         if not setting:
@@ -27,7 +27,7 @@ def get_cloud_token() -> str | None:
         return decrypt_secret(setting.value)
 
 
-def save_cloud_token(token: str) -> bool:
+def save_token(token: str) -> bool:
     with Session(engine) as session:
         setting = session.get(Settings, "bambu_cloud_token")
         if setting:

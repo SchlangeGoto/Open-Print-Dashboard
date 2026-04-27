@@ -7,7 +7,7 @@ from app.core.bambu_exceptions import *
 logger = logging.getLogger("uvicorn.error")
 
 
-from app.db.db_helper import get_credentials, get_cloud_token
+from app.db.db_helper import get_credentials, get_cloud_token_db
 
 BASE_URL = "https://api.bambulab.com"
 
@@ -41,7 +41,7 @@ class BambuCloudClient:
     def _load_token(self):
         """Load token from db only when needed."""
         if not self.token:
-            self.token = get_cloud_token()
+            self.token = get_cloud_token_db()
 
     def login(self, code: str | None = None):
         """Authenticate and store the access token.

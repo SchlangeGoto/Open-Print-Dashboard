@@ -11,13 +11,25 @@ from app.core.bambu_exceptions import (
     CloudflareError,
     CodeRequiredError,
     CodeExpiredError,
-    CodeIncorrectError, NotLoggedInError,
+    CodeIncorrectError,
+    NotLoggedInError,
 )
+from app.core.config import config
 from app.db.database import create_tables
 from app.routers import health, printers, spools, settings, auth, filaments, prints, users
 from app.services.printer_service import printer_service
 
 logger = logging.getLogger("uvicorn.error")
+
+# Maps exception types to HTTP status codes for the global handler
+_BAMBU_EXCEPTION_STATUS: dict[type, int] = {
+    CloudflareError: 503,
+    CodeRequiredError: 401,
+    CodeExpiredError: 400,
+    CodeIncorrectError: 400,
+    NotLoggedInError: 401,
+}
+
 
 async def wait_for_db(max_attempts: int = 30, delay_seconds: float = 2.0) -> None:
     last_error = None
@@ -48,7 +60,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=config.cors_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -65,20 +77,9 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 async def unhandled_exception_handler(request: Request, exc: Exception):
     logger.exception("Unhandled error on %s %s", request.method, request.url.path)
 
-    if isinstance(exc, CloudflareError):
-        return JSONResponse(status_code=503, content={"detail": str(exc)})
-
-    if isinstance(exc, CodeRequiredError):
-        return JSONResponse(status_code=401, content={"detail": str(exc)})
-
-    if isinstance(exc, CodeExpiredError):
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-    if isinstance(exc, CodeIncorrectError):
-        return JSONResponse(status_code=400, content={"detail": str(exc)})
-
-    if isinstance(exc, NotLoggedInError):
-        return JSONResponse(status_code=401, content={"detail": str(exc)})
+    for exc_type, status_code in _BAMBU_EXCEPTION_STATUS.items():
+        if isinstance(exc, exc_type):
+            return JSONResponse(status_code=status_code, content={"detail": str(exc)})
 
     if isinstance(exc, requests.RequestException):
         return JSONResponse(

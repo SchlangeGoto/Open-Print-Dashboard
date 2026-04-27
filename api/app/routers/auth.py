@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.db.db_helper import get_cloud_token
+from app.db.db_helper import get_cloud_token_db
 from app.services.printer_service import printer_service
 from app.core.bambu_exceptions import *
 
@@ -19,7 +19,7 @@ _pending_login = False
 @router.post("/login/start")
 def login_start(payload: LoginStartRequest):
 
-    if get_cloud_token():
+    if get_cloud_token_db():
         raise HTTPException(status_code=400, detail="Already logged in")
 
     global _pending_login

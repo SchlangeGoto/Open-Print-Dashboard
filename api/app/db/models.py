@@ -1,6 +1,14 @@
 from datetime import datetime, timezone
 from sqlmodel import SQLModel, Field
 from typing import Optional
+from pydantic import BaseModel
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    username: Optional[str] = None
 
 class Filament(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
@@ -49,5 +57,6 @@ class Settings(SQLModel, table=True):
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     username: str = Field(unique=True)
-    password_hash: str
+    password: str
+    disabled: bool = False
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

@@ -1,11 +1,20 @@
-import hashlib
-import secrets
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import timedelta
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlmodel import Session, select
 
+from app.core.security import (
+    verify_password,
+    get_password_hash,
+    create_access_token,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+)
 from app.db.database import get_session
-from app.db.models import User, Settings
+from app.db.models import User, Settings, Token
+from app.dependencies import get_current_active_user
 from app.services.printer_service import printer_service
 
 router = APIRouter()
@@ -14,15 +23,6 @@ router = APIRouter()
 class UserCreate(BaseModel):
     username: str
     password: str
-
-
-class UserLogin(BaseModel):
-    username: str
-    password: str
-
-
-def _hash_password(password: str, salt: str) -> str:
-    return hashlib.sha256(f"{salt}{password}".encode()).hexdigest()
 
 
 @router.get("/")
@@ -44,28 +44,41 @@ def register_user(payload: UserCreate, session: Session = Depends(get_session)):
     if existing:
         raise HTTPException(status_code=400, detail="A user already exists")
 
-    salt = secrets.token_hex(16)
-    password_hash = _hash_password(payload.password, salt)
-
-    user = User(username=payload.username, password_hash=f"{salt}:{password_hash}")
+    # The docs say to use pwdlib to hash — store only the hash, no manual salt needed
+    user = User(username=payload.username, password=get_password_hash(payload.password))
     session.add(user)
     session.commit()
     session.refresh(user)
     return {"ok": True, "username": user.username}
 
 
-@router.post("/login")
-def login_user(payload: UserLogin, session: Session = Depends(get_session)):
-    """Validate local user credentials."""
-    user = session.exec(select(User).where(User.username == payload.username)).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+@router.post("/token", response_model=Token)
+def login_for_access_token(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
+    session: Session = Depends(get_session),
+):
+    """
+    The docs say this endpoint MUST accept form data (not JSON)
+    and return access_token + token_type.
+    """
+    user = session.exec(select(User).where(User.username == form_data.username)).first()
+    if not user or not verify_password(form_data.password, user.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(
+        data={"sub": user.username},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+    return Token(access_token=access_token, token_type="bearer")
 
-    salt, stored_hash = user.password_hash.split(":", 1)
-    if _hash_password(payload.password, salt) != stored_hash:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    return {"ok": True, "username": user.username}
+@router.get("/me")
+def read_users_me(current_user: Annotated[User, Depends(get_current_active_user)]):
+    """Protected route — the docs use this as the example of a secured endpoint."""
+    return {"username": current_user.username}
 
 
 @router.get("/setup-status")

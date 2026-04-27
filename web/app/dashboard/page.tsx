@@ -2,17 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { formatDuration, formatWeight, formatCurrency, getStatusLabel, getStatusColor } from "@/lib/utils";
+import type { Filament, Spool, PrintJob, PrinterStatus, PrinterDevice } from "@/lib/types";
+import { formatDuration, formatWeight, formatCurrency, formatDate, getStatusLabel, getStatusColor } from "@/lib/utils";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import {
-  Printer,
   Clock,
   Weight,
-  Package,
   CircleDollarSign,
-  Activity,
   Layers,
   Thermometer,
   Wifi,
@@ -20,12 +18,12 @@ import {
 } from "lucide-react";
 
 export default function DashboardPage() {
-  const [status, setStatus] = useState<any>(null);
-  const [prints, setPrints] = useState<any[]>([]);
-  const [filaments, setFilaments] = useState<any[]>([]);
-  const [spools, setSpools] = useState<any[]>([]);
-  const [activeSpool, setActiveSpool] = useState<any>(null);
-  const [printers, setPrinters] = useState<any[]>([]);
+  const [status, setStatus] = useState<PrinterStatus | null>(null);
+  const [prints, setPrints] = useState<PrintJob[]>([]);
+  const [filaments, setFilaments] = useState<Filament[]>([]);
+  const [spools, setSpools] = useState<Spool[]>([]);
+  const [activeSpool, setActiveSpool] = useState<Spool | null>(null);
+  const [printers, setPrinters] = useState<PrinterDevice[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -314,11 +312,7 @@ export default function DashboardPage() {
                     <td className="py-3 pr-4 text-muted">{formatDuration(p.duration_seconds)}</td>
                     <td className="py-3 pr-4 text-muted">{formatCurrency(p.estimated_cost)}</td>
                     <td className="py-3 text-muted">
-                      {p.finished_at
-                        ? new Date(p.finished_at).toLocaleDateString()
-                        : p.start_time
-                          ? new Date(p.start_time).toLocaleDateString()
-                          : "—"}
+                      {formatDate(p.finished_at || p.start_time)}
                     </td>
                   </tr>
                 ))}

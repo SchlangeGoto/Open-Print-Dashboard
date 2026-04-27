@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     localStorage.removeItem("opd_user");
+    localStorage.removeItem("opd_token");
     setUsername(null);
     router.push("/");
   }

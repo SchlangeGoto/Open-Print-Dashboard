@@ -48,11 +48,10 @@ export default function Home() {
     setError("");
 
     try {
-      const result = await api.loginUser(loginUsername, loginPassword);
-      if (result.ok) {
-        login(result.username);
-        router.push("/dashboard");
-      }
+      await api.loginUser(loginUsername, loginPassword);
+      // loginUser stores the token; use the submitted username for display
+      login(loginUsername);
+      router.push("/dashboard");
     } catch (err: any) {
       setError(err.message || "Invalid credentials");
     } finally {

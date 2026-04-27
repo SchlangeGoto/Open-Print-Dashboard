@@ -5,3 +5,8 @@ requests
 sqlmodel
 psycopg2-binary
 cloudscraper
+cryptography
+python-multipart
+PyJWT
+pwdlib[argon2]
+python-dotenv

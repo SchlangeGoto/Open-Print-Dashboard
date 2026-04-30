@@ -7,12 +7,20 @@ import { ReactNode, useEffect } from "react";
 interface ModalProps {
   open: boolean;
   onClose: () => void;
-  title: string;
+  title?: string;
   children: ReactNode;
   className?: string;
+  size?: "sm" | "md" | "lg" | "xl";
 }
 
-export function Modal({ open, onClose, title, children, className }: ModalProps) {
+const sizeMap = {
+  sm: "max-w-sm",
+  md: "max-w-lg",
+  lg: "max-w-2xl",
+  xl: "max-w-4xl",
+};
+
+export function Modal({ open, onClose, title, children, className, size = "md" }: ModalProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -22,27 +30,43 @@ export function Modal({ open, onClose, title, children, className }: ModalProps)
     return () => { document.body.style.overflow = ""; };
   }, [open]);
 
+  useEffect(() => {
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    if (open) window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+        style={{ animation: "fadeIn 0.15s ease-out" }}
+      />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg rounded-2xl border border-card-border bg-card p-6 shadow-2xl",
+          "relative z-10 w-full rounded-2xl border border-[var(--card-border)] bg-[var(--card)] shadow-2xl",
+          sizeMap[size],
           className,
         )}
+        style={{ animation: "fadeUp 0.2s ease-out" }}
       >
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button
-            onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
-            <X size={20} />
-          </button>
-        </div>
-        {children}
+        {title && (
+          <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--card-border)]">
+            <h2 className="text-base font-semibold text-zinc-100">{title}</h2>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/60 transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+        <div className="p-6 overflow-y-auto max-h-[85vh]">{children}</div>
       </div>
     </div>
   );

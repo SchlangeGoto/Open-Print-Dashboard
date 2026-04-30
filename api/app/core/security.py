@@ -6,27 +6,41 @@ from typing import Optional
 
 import jwt
 from cryptography.fernet import Fernet
-from dotenv import set_key
+from dotenv import load_dotenv, set_key
 from pwdlib import PasswordHash
 from sqlmodel import select, Session
 
 from app.db.models import User
 
+API_ROOT = Path(__file__).resolve().parents[2]
+ENV_PATH = Path(os.getenv("OPD_ENV_PATH", API_ROOT / ".env"))
+load_dotenv(ENV_PATH)
+
 SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production") # TODO: if secret key is not set, generate one and save to .env (but warn the user that existing tokens will be invalidated)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-ENV_PATH = Path(__file__).resolve().parents[3] / ".env"
 
 password_hash = PasswordHash.recommended()
 DUMMY_HASH = password_hash.hash("dummypassword")
 
+def _is_valid_fernet_key(key: str) -> bool:
+    try:
+        Fernet(key.encode())
+        return True
+    except (TypeError, ValueError):
+        return False
+
+
 def get_or_create_bambu_key() -> str:
     existing = os.getenv("BAMBU_CREDENTIALS_KEY")
-    if existing:
+    if existing and _is_valid_fernet_key(existing):
         return existing
 
     new_key = Fernet.generate_key().decode()
-    set_key(ENV_PATH, "BAMBU_CREDENTIALS_KEY", new_key)
+    try:
+        set_key(ENV_PATH, "BAMBU_CREDENTIALS_KEY", new_key)
+    except OSError:
+        pass
     os.environ["BAMBU_CREDENTIALS_KEY"] = new_key
     return new_key
 

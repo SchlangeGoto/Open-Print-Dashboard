@@ -1,7 +1,8 @@
 import clsx, { type ClassValue } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return clsx(inputs);
+  return twMerge(clsx(inputs));
 }
 
 export function formatDuration(seconds: number | null | undefined): string {
@@ -31,6 +32,17 @@ export function formatDate(
   });
 }
 
+export function formatDateTime(date: string | null | undefined): string {
+  if (!date) return "—";
+  return new Date(date).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatCurrency(amount: number | null | undefined): string {
   if (amount == null) return "—";
   return `€${amount.toFixed(2)}`;
@@ -53,4 +65,22 @@ export function getStatusColor(status: number | null | undefined): string {
     case 4: return "text-blue-400";
     default: return "text-zinc-400";
   }
+}
+
+export function getStatusVariant(
+  status: number | null | undefined,
+): "default" | "success" | "warning" | "danger" | "info" {
+  switch (status) {
+    case 2: return "success";
+    case 3: return "danger";
+    case 4: return "info";
+    default: return "default";
+  }
+}
+
+export function stockColor(percent: number, fallback = "#3b82f6"): string {
+  if (percent <= 10) return "#ef4444";
+  if (percent <= 30) return "#f59e0b";
+  if (percent >= 70) return "#22c55e";
+  return fallback;
 }

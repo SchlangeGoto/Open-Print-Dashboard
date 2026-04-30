@@ -8,18 +8,14 @@ interface BadgeProps {
 }
 
 const variants = {
-  default: "bg-zinc-800 text-zinc-300",
-  success: "bg-green-900/50 text-green-400 border-green-800",
-  warning: "bg-yellow-900/50 text-yellow-400 border-yellow-800",
-  danger: "bg-red-900/50 text-red-400 border-red-800",
-  info: "bg-blue-900/50 text-blue-400 border-blue-800",
+  default: "bg-zinc-800/80 text-zinc-300 border-zinc-700/50",
+  success: "bg-emerald-950/60 text-emerald-400 border-emerald-800/50",
+  warning: "bg-amber-950/60 text-amber-400 border-amber-800/50",
+  danger: "bg-red-950/60 text-red-400 border-red-800/50",
+  info: "bg-blue-950/60 text-blue-400 border-blue-800/50",
 };
 
-export function Badge({
-  children,
-  variant = "default",
-  className,
-}: BadgeProps) {
+export function Badge({ children, variant = "default", className }: BadgeProps) {
   return (
     <span
       className={cn(

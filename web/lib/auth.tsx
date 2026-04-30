@@ -13,7 +13,7 @@ import { api } from "@/lib/api";
 interface AuthContextType {
   username: string | null;
   isLoading: boolean;
-  login: (username: string) => void;
+  login: (username: string, token: string) => void;
   logout: () => void;
 }
 
@@ -31,31 +31,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    const stored = localStorage.getItem("opd_user");
-    if (stored) {
-      setUsername(stored);
+    const storedUser = localStorage.getItem("opd_user");
+    const storedToken = localStorage.getItem("opd_token");
+
+    if (storedUser && storedToken) {
+      // Validate token by fetching /me
+      api.getMe()
+        .then((me) => {
+          setUsername(me.username);
+        })
+        .catch(() => {
+          localStorage.removeItem("opd_user");
+          localStorage.removeItem("opd_token");
+          setUsername(null);
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
     if (isLoading) return;
-
-    // Public routes that don't need auth
     const isPublicRoute = pathname === "/" || pathname.startsWith("/setup");
-
     if (!username && !isPublicRoute) {
       router.push("/");
     }
   }, [username, isLoading, pathname, router]);
 
-  function login(name: string) {
+  function login(name: string, token: string) {
     localStorage.setItem("opd_user", name);
+    localStorage.setItem("opd_token", token);
     setUsername(name);
   }
 
   function logout() {
     localStorage.removeItem("opd_user");
+    localStorage.removeItem("opd_token");
     setUsername(null);
     router.push("/");
   }

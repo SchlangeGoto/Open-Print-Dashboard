@@ -2,22 +2,21 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { formatDuration, formatWeight, formatCurrency, getStatusLabel, getStatusColor } from "@/lib/utils";
+import {
+  formatDuration, formatWeight, formatCurrency, stockColor,
+} from "@/lib/utils";
 import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { SpoolIndicator } from "@/components/ui/SpoolIndicator";
+import { CoverImage } from "@/components/ui/CoverImage";
 import {
-  Printer,
-  Clock,
-  Weight,
-  Package,
-  CircleDollarSign,
-  Activity,
-  Layers,
-  Thermometer,
-  Wifi,
-  WifiOff,
+  Layers, Clock, Weight, CircleDollarSign, Thermometer,
+  WifiOff, Printer,
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
+import PrintJobModal from "@/components/modals/PrintJobModal";
+import SpoolModal from "@/components/modals/SpoolModal";
 
 export default function DashboardPage() {
   const [status, setStatus] = useState<any>(null);
@@ -27,6 +26,8 @@ export default function DashboardPage() {
   const [activeSpool, setActiveSpool] = useState<any>(null);
   const [printers, setPrinters] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedPrint, setSelectedPrint] = useState<any>(null);
+  const [selectedSpool, setSelectedSpool] = useState<any>(null);
 
   useEffect(() => {
     async function load() {
@@ -50,285 +51,294 @@ export default function DashboardPage() {
       }
     }
     load();
-    const interval = setInterval(load, 10000); // Refresh every 10s
+    const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
   }, []);
 
-  // Derived stats
   const totalPrints = prints.length;
   const totalWeightUsed = prints.reduce((sum, p) => sum + (p.weight || 0), 0);
   const totalPrintTime = prints.reduce((sum, p) => sum + (p.duration_seconds || 0), 0);
   const totalCost = prints.reduce((sum, p) => sum + (p.estimated_cost || 0), 0);
-  const totalSpoolsCount = spools.length;
-  const activeSpoolsCount = spools.filter((s) => s.active).length;
-  const totalRemainingG = spools.reduce((sum, s) => sum + (s.remaining_g || 0), 0);
-
-  const currentPrint = status?.gcode_state === "RUNNING" ? status : null;
   const isConnected = status && status.status !== "no_data";
+  const activePrints = prints.filter((p) => p.status === 4);
 
-  const recentPrints = prints.slice(0, 5);
-
-  // Active filament info
-  const activeFilament = activeSpool
-    ? filaments.find((f) => f.id === activeSpool.filament_id)
-    : null;
+  // Filament stock chart data
+  const filamentChartData = filaments
+    .filter((f) => f.total_remaining_g > 0)
+    .map((f) => {
+      const totalSpoolG = spools
+        .filter((s) => s.filament_id === f.id)
+        .reduce((sum, s) => sum + s.total_weight_g, 0);
+      const pct = totalSpoolG > 0 ? (f.total_remaining_g / totalSpoolG) * 100 : 0;
+      return {
+        name: f.color_name,
+        remaining: Math.round(f.total_remaining_g),
+        pct: Math.round(pct),
+        color: f.color_hex,
+      };
+    });
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-pulse text-zinc-500">Loading dashboard...</div>
+      <div className="space-y-6">
+        <div className="h-8 skeleton w-48" />
+        <div className="grid grid-cols-4 gap-4">
+          {[...Array(4)].map((_, i) => <div key={i} className="h-28 skeleton rounded-xl" />)}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6 pb-8">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-sm text-muted mt-1">Overview of your 3D printing activity</p>
+        <h1 className="text-xl font-bold text-zinc-100">Dashboard</h1>
+        <p className="text-xs text-muted mt-0.5">Overview of your 3D printing activity</p>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          title="Total Prints"
-          value={totalPrints}
-          icon={Layers}
-          iconColor="text-blue-400"
-        />
-        <StatCard
-          title="Filament Used"
-          value={formatWeight(totalWeightUsed)}
-          subtitle={`${totalSpoolsCount} spools in inventory`}
-          icon={Weight}
-          iconColor="text-green-400"
-        />
-        <StatCard
-          title="Print Time"
-          value={formatDuration(totalPrintTime)}
-          icon={Clock}
-          iconColor="text-purple-400"
-        />
-        <StatCard
-          title="Est. Total Cost"
-          value={formatCurrency(totalCost)}
-          icon={CircleDollarSign}
-          iconColor="text-yellow-400"
-        />
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Prints" value={totalPrints} icon={Layers} iconColor="text-blue-400" iconBg="bg-blue-950/50" />
+        <StatCard title="Filament Used" value={formatWeight(totalWeightUsed)} icon={Weight} iconColor="text-emerald-400" iconBg="bg-emerald-950/50" />
+        <StatCard title="Print Time" value={formatDuration(totalPrintTime)} icon={Clock} iconColor="text-purple-400" iconBg="bg-purple-950/50" />
+        <StatCard title="Est. Cost" value={formatCurrency(totalCost)} icon={CircleDollarSign} iconColor="text-amber-400" iconBg="bg-amber-950/50" />
       </div>
 
-      {/* Two Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Printer Status */}
-        <Card className="lg:col-span-2">
-          <CardTitle>Printer Status</CardTitle>
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* Left: Printer Status */}
+        <div className="xl:col-span-2 space-y-5">
 
-          {isConnected ? (
-            <div className="mt-4 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Wifi size={16} className="text-green-400" />
-                  <span className="text-sm text-green-400">Connected</span>
-                </div>
-                <Badge
-                  variant={
-                    status.gcode_state === "RUNNING"
-                      ? "info"
-                      : status.gcode_state === "IDLE"
-                        ? "default"
-                        : status.gcode_state === "FINISH"
-                          ? "success"
-                          : "warning"
-                  }
-                >
-                  {status.gcode_state || "Unknown"}
-                </Badge>
+          {/* Active Prints */}
+          {activePrints.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-3">Active Prints</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {activePrints.map((p) => (
+                  <Card key={p.id} onClick={() => setSelectedPrint(p)} hoverable>
+                    <div className="flex gap-4">
+                      <CoverImage cover={p.cover} alt={p.title} className="w-16 h-16 rounded-lg shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{p.title}</p>
+                        <p className="text-xs text-muted mt-0.5">Printing</p>
+                        <div className="mt-2.5 space-y-1.5">
+                          <div className="flex justify-between text-xs text-muted">
+                            <span>Progress</span>
+                            <span>{p.mc_percent ?? "?"}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-accent rounded-full transition-all"
+                              style={{ width: `${p.mc_percent ?? 0}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
               </div>
-
-              {/* Current Print Info */}
-              {currentPrint && (
-                <div className="rounded-lg border border-blue-800 bg-blue-900/20 p-4">
-                  <p className="text-sm font-medium mb-2">
-                    ️ {status.subtask_name || "Printing..."}
-                  </p>
-                  <div className="w-full bg-zinc-800 rounded-full h-3 mb-2">
-                    <div
-                      className="bg-accent h-3 rounded-full transition-all duration-500"
-                      style={{ width: `${status.mc_percent || 0}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted">
-                    <span>{status.mc_percent || 0}% complete</span>
-                    <span>{status.mc_remaining_time ? `${status.mc_remaining_time}min left` : ""}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Temps */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-lg bg-zinc-800/50 p-3">
-                  <div className="flex items-center gap-2 text-xs text-muted mb-1">
-                    <Thermometer size={12} /> Nozzle
-                  </div>
-                  <p className="text-lg font-semibold">
-                    {status.nozzle_temper != null ? `${status.nozzle_temper}°C` : "—"}
-                    {status.nozzle_target_temper ? (
-                      <span className="text-xs text-muted ml-1">/ {status.nozzle_target_temper}°C</span>
-                    ) : null}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-zinc-800/50 p-3">
-                  <div className="flex items-center gap-2 text-xs text-muted mb-1">
-                    <Thermometer size={12} /> Bed
-                  </div>
-                  <p className="text-lg font-semibold">
-                    {status.bed_temper != null ? `${status.bed_temper}°C` : "—"}
-                    {status.bed_target_temper ? (
-                      <span className="text-xs text-muted ml-1">/ {status.bed_target_temper}°C</span>
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-
-              {/* Fan & Speed */}
-              <div className="grid grid-cols-3 gap-3 text-center">
-                <div className="rounded-lg bg-zinc-800/50 p-3">
-                  <p className="text-xs text-muted">Speed</p>
-                  <p className="text-sm font-semibold mt-1">
-                    {status.spd_lvl != null ? `Lvl ${status.spd_lvl}` : "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-zinc-800/50 p-3">
-                  <p className="text-xs text-muted">Layer</p>
-                  <p className="text-sm font-semibold mt-1">
-                    {status.layer_num ?? "—"} / {status.total_layer_num ?? "—"}
-                  </p>
-                </div>
-                <div className="rounded-lg bg-zinc-800/50 p-3">
-                  <p className="text-xs text-muted">Fan</p>
-                  <p className="text-sm font-semibold mt-1">
-                    {status.cooling_fan_speed != null
-                      ? `${Math.round((status.cooling_fan_speed / 15) * 100)}%`
-                      : "—"}
-                  </p>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-4 flex items-center gap-3 text-zinc-500">
-              <WifiOff size={20} />
-              <span>Printer not connected or no data received yet</span>
             </div>
           )}
-        </Card>
 
-        {/* Active Filament + Quick Info */}
-        <div className="space-y-4">
-          <Card>
-            <CardTitle>Loaded Filament</CardTitle>
-            {activeSpool && activeFilament ? (
-              <div className="mt-3 space-y-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className="w-10 h-10 rounded-full border-2 border-zinc-600"
-                    style={{ backgroundColor: activeFilament.color_hex }}
-                  />
-                  <div>
-                    <p className="font-medium">{activeFilament.color_name}</p>
-                    <p className="text-xs text-muted">
-                      {activeFilament.brand} — {activeFilament.material}
-                    </p>
+          {/* Filament Stock Chart */}
+          {filamentChartData.length > 0 && (
+            <Card>
+              <CardTitle className="mb-4">Filament Stock</CardTitle>
+              <div style={{ height: 180 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={filamentChartData} barSize={28} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fill: "#6b6b76", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "#6b6b76", fontSize: 10 }}
+                      axisLine={false}
+                      tickLine={false}
+                      tickFormatter={(v) => `${v}g`}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: "#0f0f12", border: "1px solid #1c1c21", borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: "#e8e8ed" }}
+                      formatter={(val: any, _name: any, props: any) => [
+                        `${val}g (${props.payload.pct}%)`,
+                        "Remaining",
+                      ]}
+                    />
+                    <Bar dataKey="remaining" radius={[4, 4, 0, 0]}>
+                      {filamentChartData.map((entry, i) => (
+                        <Cell key={i} fill={stockColor(entry.pct, entry.color)} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {filamentChartData.map((f, i) => (
+                  <div key={i} className="flex items-center gap-1.5 text-xs text-muted">
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ background: stockColor(f.pct, f.color) }} />
+                    {f.name} · {f.pct}%
+                    {f.pct <= 30 && (
+                      <span className={`ml-0.5 font-medium ${f.pct <= 10 ? "text-red-400" : "text-amber-400"}`}>
+                        {f.pct <= 10 ? "⚠ Buy now" : "Low"}
+                      </span>
+                    )}
                   </div>
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Printer Status */}
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <CardTitle>Printer</CardTitle>
+              <div className="flex items-center gap-2">
+                {isConnected
+                  ? <><div className="w-1.5 h-1.5 rounded-full bg-emerald-400" /><span className="text-xs text-emerald-400">Connected</span></>
+                  : <><div className="w-1.5 h-1.5 rounded-full bg-zinc-600" /><span className="text-xs text-muted">Offline</span></>
+                }
+              </div>
+            </div>
+            {isConnected ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-lg bg-zinc-900/70 border border-zinc-800/60 p-3">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted mb-1">
+                    <Thermometer size={10} /> Nozzle
+                  </div>
+                  <p className="text-lg font-bold tabular-nums">
+                    {status?.nozzle_temper ?? "—"}°
+                    {status?.nozzle_target_temper
+                      ? <span className="text-xs text-muted font-normal">/{status.nozzle_target_temper}°</span>
+                      : null}
+                  </p>
                 </div>
-                <div className="w-full bg-zinc-800 rounded-full h-2">
-                  <div
-                    className="h-2 rounded-full transition-all"
-                    style={{
-                      width: `${Math.round(
-                        (activeSpool.remaining_g / activeSpool.total_weight_g) * 100,
-                      )}%`,
-                      backgroundColor: activeFilament.color_hex,
-                    }}
-                  />
+                <div className="rounded-lg bg-zinc-900/70 border border-zinc-800/60 p-3">
+                  <div className="flex items-center gap-1.5 text-[10px] text-muted mb-1">
+                    <Thermometer size={10} /> Bed
+                  </div>
+                  <p className="text-lg font-bold tabular-nums">
+                    {status?.bed_temper ?? "—"}°
+                    {status?.bed_target_temper
+                      ? <span className="text-xs text-muted font-normal">/{status.bed_target_temper}°</span>
+                      : null}
+                  </p>
                 </div>
-                <p className="text-xs text-muted">
-                  {Math.round(activeSpool.remaining_g)}g / {activeSpool.total_weight_g}g remaining
-                </p>
+                <div className="rounded-lg bg-zinc-900/70 border border-zinc-800/60 p-3">
+                  <p className="text-[10px] text-muted mb-1">State</p>
+                  <p className="text-sm font-semibold">{status?.gcode_state ?? "—"}</p>
+                </div>
+                <div className="rounded-lg bg-zinc-900/70 border border-zinc-800/60 p-3">
+                  <p className="text-[10px] text-muted mb-1">Speed</p>
+                  <p className="text-sm font-semibold">Lvl {status?.spd_lvl ?? "—"}</p>
+                </div>
               </div>
             ) : (
-              <p className="mt-3 text-sm text-muted">No active spool set</p>
+              <div className="flex items-center gap-3 text-zinc-600 py-2">
+                <WifiOff size={18} />
+                <span className="text-sm">No live data from printer</span>
+              </div>
             )}
           </Card>
+        </div>
 
+        {/* Right: Loaded Spool + Printers */}
+        <div className="space-y-4">
+          {/* Active Spool */}
+          {activeSpool && (
+            <Card onClick={() => setSelectedSpool(activeSpool)} hoverable>
+              <div className="flex items-center justify-between mb-3">
+                <CardTitle>Loaded Spool</CardTitle>
+                <Badge variant="success">Active</Badge>
+              </div>
+              {(() => {
+                const fil = filaments.find((f) => f.id === activeSpool.filament_id);
+                const pct = Math.round((activeSpool.remaining_g / activeSpool.total_weight_g) * 100);
+                return (
+                  <div className="flex items-center gap-4">
+                    <SpoolIndicator
+                      remaining={activeSpool.remaining_g}
+                      total={activeSpool.total_weight_g}
+                      color={fil?.color_hex ?? "#3b82f6"}
+                      size={80}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm">{fil?.color_name ?? "Unknown"}</p>
+                      <p className="text-xs text-muted">{fil?.brand} · {fil?.material}</p>
+                      <div className="mt-2 h-1.5 w-full bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all"
+                          style={{ width: `${pct}%`, backgroundColor: stockColor(pct, fil?.color_hex) }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted mt-1">{Math.round(activeSpool.remaining_g)}g remaining</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </Card>
+          )}
+
+          {/* Printers */}
+          {printers.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase tracking-wide mb-2">Printers</p>
+              <div className="space-y-3">
+                {printers.map((dev) => (
+                  <Card key={dev.dev_id}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="rounded-lg bg-zinc-800/80 p-2">
+                          <Printer size={14} className="text-accent" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{dev.name}</p>
+                          <p className="text-xs text-muted">{dev.dev_model_name || dev.dev_id}</p>
+                        </div>
+                      </div>
+                      <Badge variant={dev.online ? "success" : "default"}>
+                        {dev.online ? "Online" : "Offline"}
+                      </Badge>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Inventory summary */}
           <Card>
-            <CardTitle>Inventory</CardTitle>
-            <div className="mt-3 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted">Filament types</span>
-                <span className="font-medium">{filaments.length}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted">Total spools</span>
-                <span className="font-medium">{totalSpoolsCount}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted">Remaining filament</span>
-                <span className="font-medium">{formatWeight(totalRemainingG)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted">Printers</span>
-                <span className="font-medium">{printers.length}</span>
-              </div>
+            <CardTitle className="mb-3">Inventory</CardTitle>
+            <div className="space-y-2">
+              {[
+                { label: "Filament types", value: filaments.length },
+                { label: "Total spools", value: spools.length },
+                { label: "Total remaining", value: formatWeight(spools.reduce((s, sp) => s + sp.remaining_g, 0)) },
+              ].map((row) => (
+                <div key={row.label} className="flex justify-between items-center text-sm py-1 border-b border-zinc-800/40 last:border-0">
+                  <span className="text-muted text-xs">{row.label}</span>
+                  <span className="font-medium text-xs">{row.value}</span>
+                </div>
+              ))}
             </div>
           </Card>
         </div>
       </div>
 
-      {/* Recent Prints */}
-      <Card>
-        <CardTitle>Recent Prints</CardTitle>
-        {recentPrints.length > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-800 text-left text-xs text-muted">
-                  <th className="pb-3 pr-4">Title</th>
-                  <th className="pb-3 pr-4">Status</th>
-                  <th className="pb-3 pr-4">Weight</th>
-                  <th className="pb-3 pr-4">Duration</th>
-                  <th className="pb-3 pr-4">Cost</th>
-                  <th className="pb-3">Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {recentPrints.map((p) => (
-                  <tr key={p.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30">
-                    <td className="py-3 pr-4 font-medium">{p.title}</td>
-                    <td className="py-3 pr-4">
-                      <span className={getStatusColor(p.status)}>
-                        {getStatusLabel(p.status)}
-                      </span>
-                    </td>
-                    <td className="py-3 pr-4 text-muted">{formatWeight(p.weight)}</td>
-                    <td className="py-3 pr-4 text-muted">{formatDuration(p.duration_seconds)}</td>
-                    <td className="py-3 pr-4 text-muted">{formatCurrency(p.estimated_cost)}</td>
-                    <td className="py-3 text-muted">
-                      {p.finished_at
-                        ? new Date(p.finished_at).toLocaleDateString()
-                        : p.start_time
-                          ? new Date(p.start_time).toLocaleDateString()
-                          : "—"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-muted">No prints recorded yet</p>
-        )}
-      </Card>
+      {selectedPrint && (
+        <PrintJobModal print={selectedPrint} onClose={() => setSelectedPrint(null)} />
+      )}
+      {selectedSpool && (
+        <SpoolModal
+          spool={selectedSpool}
+          filament={filaments.find((f) => f.id === selectedSpool.filament_id)}
+          onClose={() => setSelectedSpool(null)}
+          onActivate={async () => { await api.activateSpool(selectedSpool.id); setSelectedSpool(null); }}
+        />
+      )}
     </div>
   );
 }

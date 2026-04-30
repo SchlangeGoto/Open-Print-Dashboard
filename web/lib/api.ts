@@ -1,10 +1,25 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("opd_token");
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options?.headers as Record<string, string>),
+  };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
   const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
+    headers,
   });
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ApiError(res.status, body.detail ?? "Request failed");
@@ -18,15 +33,15 @@ export class ApiError extends Error {
   }
 }
 
-// ─── Auth / Setup ─────────────────────────────────────────
 export const api = {
-  // Setup status
-  getSetupStatus: () => request<{
-    user_created: boolean;
-    bambu_logged_in: boolean;
-    printer_configured: boolean;
-    setup_complete: boolean;
-  }>("/users/setup-status"),
+  // Setup / auth
+  getSetupStatus: () =>
+    request<{
+      user_created: boolean;
+      bambu_logged_in: boolean;
+      printer_configured: boolean;
+      setup_complete: boolean;
+    }>("/users/setup-status"),
 
   userExists: () => request<{ exists: boolean }>("/users/exists"),
 
@@ -36,11 +51,27 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
 
-  loginUser: (username: string, password: string) =>
-    request<{ ok: boolean; username: string }>("/users/login", {
+  // JWT login — uses form-encoded body as required by OAuth2PasswordRequestForm
+  loginUser: async (username: string, password: string) => {
+    const body = new URLSearchParams({ username, password });
+    const res = await fetch(`${API_BASE}/users/token`, {
       method: "POST",
-      body: JSON.stringify({ username, password }),
-    }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new ApiError(res.status, data.detail ?? "Login failed");
+    }
+    const data = await res.json();
+    // store token
+    if (data.access_token) {
+      localStorage.setItem("opd_token", data.access_token);
+    }
+    return { ok: true, username, token: data.access_token };
+  },
+
+  getMe: () => request<{ id: number; username: string; disabled: boolean }>("/users/me"),
 
   // Bambu Cloud Auth
   bambuLoginStart: (email: string, password: string) =>
@@ -74,6 +105,8 @@ export const api = {
   getFirmware: (serial: string) => request<any>(`/printers/${serial}/firmware`),
   getProjects: () => request<any[]>("/printers/projects"),
   getMessages: () => request<any[]>("/printers/messages"),
+  getCoverUrl: (url: string) =>
+    `${API_BASE}/printers/cover/${encodeURIComponent(url)}?token=${getToken()}`,
 
   // Users (Bambu profile)
   getBambuProfile: () => request<any>("/users/"),

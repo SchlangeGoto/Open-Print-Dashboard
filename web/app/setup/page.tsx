@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { api, ApiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
@@ -84,7 +84,8 @@ export default function SetupPage() {
     try {
       const res = await api.register(username, password);
       if (res.ok) {
-        login(res.username);
+        const auth = await api.loginUser(username, password);
+        login(auth.username, auth.token);
         setStep("bambu");
       }
     } catch (err: any) {

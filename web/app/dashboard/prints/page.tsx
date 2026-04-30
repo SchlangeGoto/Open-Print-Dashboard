@@ -1,32 +1,54 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
-import { Card, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Modal } from "@/components/ui/Modal";
+import { Card } from "@/components/ui/Card";
+import { CoverImage } from "@/components/ui/CoverImage";
 import {
-  formatDuration,
-  formatWeight,
-  formatCurrency,
-  formatDate,
-  getStatusLabel,
-  getStatusColor,
+  formatDuration, formatWeight, formatCurrency, formatDateTime,
+  getStatusLabel, getStatusVariant,
 } from "@/lib/utils";
-import { History, Trash2, Eye } from "lucide-react";
+import { History, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react";
 import toast from "react-hot-toast";
+import PrintJobModal from "@/components/modals/PrintJobModal";
+import { Modal } from "@/components/ui/Modal";
+
+type Filter = "all" | "printing" | "completed" | "failed";
+type SortKey = "title" | "status" | "weight" | "duration_seconds" | "estimated_cost" | "start_time" | "finished_at";
+type SortDir = "asc" | "desc";
+
+const FILTERS: { key: Filter; label: string; status?: number }[] = [
+  { key: "all", label: "All" },
+  { key: "printing", label: "Printing", status: 4 },
+  { key: "completed", label: "Completed", status: 2 },
+  { key: "failed", label: "Failed", status: 3 },
+];
+
+const COLUMNS: { key: SortKey; label: string }[] = [
+  { key: "title", label: "Title" },
+  { key: "status", label: "Status" },
+  { key: "weight", label: "Weight" },
+  { key: "duration_seconds", label: "Duration" },
+  { key: "estimated_cost", label: "Cost" },
+  { key: "start_time", label: "Start" },
+  { key: "finished_at", label: "Finish" },
+];
 
 export default function PrintsPage() {
   const [prints, setPrints] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Filter>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("finished_at");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [selectedPrint, setSelectedPrint] = useState<any>(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
 
   async function load() {
     try {
-      const data = await api.getPrintJobs();
-      setPrints(data);
+      setPrints(await api.getPrintJobs());
     } finally {
       setLoading(false);
     }
@@ -34,122 +56,141 @@ export default function PrintsPage() {
 
   useEffect(() => { load(); }, []);
 
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("desc");
+    }
+  }
+
+  const counts: Record<Filter, number> = useMemo(() => ({
+    all: prints.length,
+    printing: prints.filter((p) => p.status === 4).length,
+    completed: prints.filter((p) => p.status === 2).length,
+    failed: prints.filter((p) => p.status === 3).length,
+  }), [prints]);
+
+  const filtered = useMemo(() => {
+    let list = [...prints];
+    if (filter !== "all") {
+      const s = FILTERS.find((f) => f.key === filter)?.status;
+      list = list.filter((p) => p.status === s);
+    }
+    list.sort((a, b) => {
+      const av = a[sortKey] ?? "";
+      const bv = b[sortKey] ?? "";
+      return sortDir === "asc" ? (av > bv ? 1 : -1) : (av < bv ? 1 : -1);
+    });
+    return list;
+  }, [prints, filter, sortKey, sortDir]);
+
   async function handleDelete(id: number) {
-    if (!confirm("Delete this print record?")) return;
     try {
       await api.deletePrint(id);
-      toast.success("Print record deleted");
+      toast.success("Print deleted");
+      setConfirmDelete(null);
       load();
     } catch {
       toast.error("Failed to delete");
     }
   }
 
-  // Stats
-  const totalPrints = prints.length;
-  const finishedPrints = prints.filter((p) => p.status === 2).length;
-  const canceledPrints = prints.filter((p) => p.status === 3).length;
-  const successRate =
-    totalPrints > 0
-      ? Math.round((finishedPrints / (finishedPrints + canceledPrints || 1)) * 100)
-      : 0;
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronsUpDown size={12} className="text-zinc-600" />;
+    return sortDir === "asc"
+      ? <ChevronUp size={12} className="text-accent" />
+      : <ChevronDown size={12} className="text-accent" />;
+  }
 
   if (loading) {
-    return <div className="animate-pulse text-zinc-500 p-8">Loading print history...</div>;
+    return (
+      <div className="space-y-4">
+        <div className="h-7 skeleton w-32 rounded" />
+        <div className="h-96 skeleton rounded-xl" />
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 pb-8">
       <div>
-        <h1 className="text-2xl font-bold">Print History</h1>
-        <p className="text-sm text-muted mt-1">All your past and active prints</p>
+        <h1 className="text-xl font-bold">Print Jobs</h1>
+        <p className="text-xs text-muted mt-0.5">{prints.length} total jobs</p>
       </div>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <p className="text-xs text-muted">Total Prints</p>
-          <p className="text-xl font-bold mt-1">{totalPrints}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-muted">Completed</p>
-          <p className="text-xl font-bold mt-1 text-green-400">{finishedPrints}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-muted">Canceled / Failed</p>
-          <p className="text-xl font-bold mt-1 text-red-400">{canceledPrints}</p>
-        </Card>
-        <Card>
-          <p className="text-xs text-muted">Success Rate</p>
-          <p className="text-xl font-bold mt-1">{successRate}%</p>
-        </Card>
+      {/* Filters */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key}
+            onClick={() => setFilter(f.key)}
+            className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+              filter === f.key
+                ? "bg-accent/15 text-accent border border-accent/30"
+                : "bg-zinc-900 text-zinc-400 border border-zinc-800/60 hover:text-zinc-200"
+            }`}
+          >
+            {f.label}
+            <span className={`text-xs rounded-full px-1.5 py-0.5 ${filter === f.key ? "bg-accent/20 text-accent" : "bg-zinc-800 text-zinc-500"}`}>
+              {counts[f.key]}
+            </span>
+          </button>
+        ))}
       </div>
 
-      {/* Table */}
-      {prints.length > 0 ? (
-        <Card>
+      {filtered.length === 0 ? (
+        <EmptyState icon={History} title="No prints" description="No print jobs match this filter." />
+      ) : (
+        <Card className="p-0 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-zinc-800 text-left text-xs text-muted">
-                  <th className="pb-3 pr-4">Title</th>
-                  <th className="pb-3 pr-4">Status</th>
-                  <th className="pb-3 pr-4">Weight</th>
-                  <th className="pb-3 pr-4">Duration</th>
-                  <th className="pb-3 pr-4">Cost</th>
-                  <th className="pb-3 pr-4">Date</th>
-                  <th className="pb-3 text-right">Actions</th>
+                <tr className="border-b border-zinc-800/60">
+                  {COLUMNS.map((col) => (
+                    <th key={col.key} className="text-left p-4 first:pl-5 last:pr-5">
+                      <button
+                        className="flex items-center gap-1.5 text-xs text-muted font-medium uppercase tracking-wide hover:text-zinc-300 transition-colors"
+                        onClick={() => toggleSort(col.key)}
+                      >
+                        {col.label} <SortIcon col={col.key} />
+                      </button>
+                    </th>
+                  ))}
+                  <th className="p-4 pr-5" />
                 </tr>
               </thead>
               <tbody>
-                {prints.map((p) => (
+                {filtered.map((p) => (
                   <tr
                     key={p.id}
-                    className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors"
+                    className="border-b border-zinc-800/30 hover:bg-zinc-800/20 cursor-pointer transition-colors"
+                    onClick={() => setSelectedPrint(p)}
                   >
-                    <td className="py-3 pr-4">
+                    <td className="p-4 pl-5">
                       <div className="flex items-center gap-3">
-                        {p.cover && (
-                          <img
-                            src={p.cover}
-                            alt=""
-                            className="w-10 h-10 rounded-lg object-cover bg-zinc-800"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                          />
-                        )}
-                        <span className="font-medium">{p.title}</span>
+                        <CoverImage cover={p.cover} alt={p.title} className="w-9 h-9 rounded-lg shrink-0" />
+                        <span className="font-medium truncate max-w-[200px]">{p.title}</span>
                       </div>
                     </td>
-                    <td className="py-3 pr-4">
-                      <Badge
-                        variant={
-                          p.status === 2 ? "success" : p.status === 3 ? "danger" : p.status === 4 ? "info" : "default"
-                        }
+                    <td className="p-4">
+                      <Badge variant={getStatusVariant(p.status)}>{getStatusLabel(p.status)}</Badge>
+                    </td>
+                    <td className="p-4 text-muted text-xs">{formatWeight(p.weight)}</td>
+                    <td className="p-4 text-muted text-xs">{formatDuration(p.duration_seconds)}</td>
+                    <td className="p-4 text-muted text-xs">{formatCurrency(p.estimated_cost)}</td>
+                    <td className="p-4 text-muted text-xs">{formatDateTime(p.start_time)}</td>
+                    <td className="p-4 text-muted text-xs">
+                      {p.finished_at ? formatDateTime(p.finished_at) : p.status === 4 ? "In progress" : "—"}
+                    </td>
+                    <td className="p-4 pr-5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        className="p-1.5 rounded-lg hover:bg-red-950/50 transition-colors"
+                        onClick={() => setConfirmDelete(p.id)}
                       >
-                        {getStatusLabel(p.status)}
-                      </Badge>
-                    </td>
-                    <td className="py-3 pr-4 text-muted">{formatWeight(p.weight)}</td>
-                    <td className="py-3 pr-4 text-muted">{formatDuration(p.duration_seconds)}</td>
-                    <td className="py-3 pr-4 text-muted">{formatCurrency(p.estimated_cost)}</td>
-                    <td className="py-3 pr-4 text-muted">{formatDate(p.finished_at || p.start_time)}</td>
-                    <td className="py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => setSelectedPrint(p)}
-                        >
-                          <Eye size={14} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(p.id)}
-                        >
-                          <Trash2 size={14} className="text-red-400" />
-                        </Button>
-                      </div>
+                        <Trash2 size={13} className="text-red-400/60 hover:text-red-400" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -157,69 +198,22 @@ export default function PrintsPage() {
             </table>
           </div>
         </Card>
-      ) : (
-        <EmptyState
-          icon={History}
-          title="No prints yet"
-          description="Print history will appear here once your printer completes a job."
-        />
       )}
 
-      {/* Detail Modal */}
-      <Modal
-        open={!!selectedPrint}
-        onClose={() => setSelectedPrint(null)}
-        title="Print Details"
-      >
-        {selectedPrint && (
-          <div className="space-y-3">
-            {selectedPrint.cover && (
-              <img
-                src={selectedPrint.cover}
-                alt=""
-                className="w-full rounded-lg object-cover max-h-48 bg-zinc-800"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-              />
-            )}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div>
-                <p className="text-muted">Title</p>
-                <p className="font-medium">{selectedPrint.title}</p>
-              </div>
-              <div>
-                <p className="text-muted">Status</p>
-                <p className={getStatusColor(selectedPrint.status)}>
-                  {getStatusLabel(selectedPrint.status)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted">Weight Used</p>
-                <p>{formatWeight(selectedPrint.weight)}</p>
-              </div>
-              <div>
-                <p className="text-muted">Duration</p>
-                <p>{formatDuration(selectedPrint.duration_seconds)}</p>
-              </div>
-              <div>
-                <p className="text-muted">Estimated Cost</p>
-                <p>{formatCurrency(selectedPrint.estimated_cost)}</p>
-              </div>
-              <div>
-                <p className="text-muted">Device</p>
-                <p className="font-mono text-xs">{selectedPrint.device_id}</p>
-              </div>
-              <div>
-                <p className="text-muted">Started</p>
-                <p>{formatDate(selectedPrint.start_time, { hour: "2-digit", minute: "2-digit" })}</p>
-              </div>
-              <div>
-                <p className="text-muted">Finished</p>
-                <p>{formatDate(selectedPrint.finished_at, { hour: "2-digit", minute: "2-digit" })}</p>
-              </div>
-            </div>
-          </div>
-        )}
+      {/* Delete confirm */}
+      <Modal open={confirmDelete !== null} onClose={() => setConfirmDelete(null)} title="Delete Print Record?" size="sm">
+        <p className="text-sm text-muted mb-5">This will permanently delete this print record.</p>
+        <div className="flex gap-3">
+          <Button variant="danger" className="flex-1" onClick={() => confirmDelete !== null && handleDelete(confirmDelete)}>
+            <Trash2 size={14} /> Delete
+          </Button>
+          <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+        </div>
       </Modal>
+
+      {selectedPrint && (
+        <PrintJobModal print={selectedPrint} onClose={() => setSelectedPrint(null)} />
+      )}
     </div>
   );
 }

@@ -22,13 +22,11 @@ export default function Home() {
   useEffect(() => {
     if (isLoading) return;
 
-    // If already logged in, go straight to dashboard
     if (username) {
       router.push("/dashboard");
       return;
     }
 
-    // Check if setup is needed
     api.userExists()
       .then((data) => {
         if (!data.exists) {
@@ -37,20 +35,17 @@ export default function Home() {
         }
         setChecking(false);
       })
-      .catch(() => {
-        setChecking(false);
-      });
+      .catch(() => setChecking(false));
   }, [isLoading, username, router]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
-
     try {
       const result = await api.loginUser(loginUsername, loginPassword);
       if (result.ok) {
-        login(result.username);
+        login(result.username, result.token);
         router.push("/dashboard");
       }
     } catch (err: any) {
@@ -62,28 +57,26 @@ export default function Home() {
 
   if (isLoading || checking || needsSetup) {
     return (
-      <main className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse flex items-center gap-3">
-          <Disc3 className="animate-spin text-accent" size={24} />
-          <span className="text-zinc-400">Loading...</span>
+      <main className="min-h-screen flex items-center justify-center bg-background">
+        <div className="flex items-center gap-3 text-muted">
+          <Disc3 className="animate-spin text-accent" size={20} />
+          <span className="text-sm">Loading...</span>
         </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
+    <main className="min-h-screen flex items-center justify-center p-6 bg-background">
       <div className="w-full max-w-sm">
-        {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex rounded-2xl bg-accent/10 p-4 mb-4">
+          <div className="inline-flex rounded-2xl bg-accent/10 p-4 mb-4 ring-1 ring-accent/20">
             <Disc3 size={32} className="text-accent" />
           </div>
           <h1 className="text-2xl font-bold">Welcome back</h1>
           <p className="text-sm text-muted mt-1">Sign in to your dashboard</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleLogin} className="space-y-4">
           <Input
             label="Username"
@@ -96,7 +89,7 @@ export default function Home() {
           <Input
             label="Password"
             type="password"
-            placeholder="••••••••"
+            placeholder="Password"
             value={loginPassword}
             onChange={(e) => setLoginPassword(e.target.value)}
             required

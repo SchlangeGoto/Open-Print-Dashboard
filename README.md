@@ -123,6 +123,14 @@ Your data lives on your hardware. Full stop.
 > - The filament / spool pages
 > - The print history table
 > - The setup wizard
+> - <img width="976" height="863" alt="{09A32FFD-8D3D-494B-BB68-3A63E58B7C85}" src="https://github.com/user-attachments/assets/fa60fa82-6124-48d6-9da4-5885fd0f8cba" />
+<img width="961" height="714" alt="{38251648-B05F-4E96-B369-7CCE06B1FD88}" src="https://github.com/user-attachments/assets/1686ee65-41e0-4c54-8b83-7d71874fe846" />
+<img width="962" height="690" alt="{EA0E10D4-21A5-47C8-8605-5130462C086A}" src="https://github.com/user-attachments/assets/0e118c5d-f6e2-4f23-a293-f90e4656d103" />
+<img width="976" height="962" alt="{FF73790A-81B4-4846-BBDB-DEE7133FDAE7}" src="https://github.com/user-attachments/assets/c0222dc0-6fe0-4cb7-bb0a-e2e5a1f4ddbb" />
+
+
+
+
 >
 > A short screen recording or GIF of the live printer status updating in real time would be absolutely incredible.
 

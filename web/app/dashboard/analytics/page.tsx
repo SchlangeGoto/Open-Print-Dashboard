@@ -6,7 +6,7 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { formatDuration, formatWeight, formatCurrency } from "@/lib/utils";
 import {
-  Layers, Clock, Weight, CircleDollarSign, CheckCircle,
+  Layers, Clock, Weight, CircleDollarSign, CheckCircle, CalendarDays,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -55,12 +55,25 @@ export default function AnalyticsPage() {
   const totalPrints = prints.length;
   const completedPrints = prints.filter((p) => p.status === 2).length;
   const canceledPrints = prints.filter((p) => p.status === 3).length;
-  const successRate = completedPrints + canceledPrints > 0
-    ? Math.round((completedPrints / (completedPrints + canceledPrints)) * 100)
-    : 0;
+  const successRate =
+    completedPrints + canceledPrints > 0
+      ? Math.round((completedPrints / (completedPrints + canceledPrints)) * 100)
+      : 0;
   const totalTime = prints.reduce((s, p) => s + (p.duration_seconds || 0), 0);
   const totalWeight = prints.reduce((s, p) => s + (p.weight || 0), 0);
   const totalCost = prints.reduce((s, p) => s + (p.estimated_cost || 0), 0);
+
+  // Average prints per day (since first print)
+  const avgPrintsPerDay = useMemo(() => {
+    if (prints.length === 0) return "0";
+    const timestamps = prints
+      .map((p) => new Date(p.start_time || p.finished_at || 0).getTime())
+      .filter((t) => t > 0);
+    if (timestamps.length === 0) return "0";
+    const firstDate = Math.min(...timestamps);
+    const days = Math.max(1, Math.ceil((Date.now() - firstDate) / (1000 * 60 * 60 * 24)));
+    return (prints.length / days).toFixed(1);
+  }, [prints]);
 
   // Activity data
   const activityData = useMemo(() => {
@@ -81,9 +94,10 @@ export default function AnalyticsPage() {
 
     return intervals.map((date) => {
       const start = startOfDay(date);
-      const end = period === "yearly"
-        ? new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
-        : new Date(start.getTime() + 86400000 - 1);
+      const end =
+        period === "yearly"
+          ? new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59)
+          : new Date(start.getTime() + 86400000 - 1);
       const count = prints.filter((p) => {
         const d = new Date(p.start_time || p.finished_at || 0);
         return d >= start && d <= end;
@@ -114,15 +128,22 @@ export default function AnalyticsPage() {
     return (
       <div className="space-y-4">
         <div className="h-7 skeleton w-32 rounded" />
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => <div key={i} className="h-28 skeleton rounded-xl" />)}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-28 skeleton rounded-xl" />
+          ))}
         </div>
       </div>
     );
   }
 
   const tooltipStyle = {
-    contentStyle: { background: "#0f0f12", border: "1px solid #1c1c21", borderRadius: 8, fontSize: 12 },
+    contentStyle: {
+      background: "#0f0f12",
+      border: "1px solid #1c1c21",
+      borderRadius: 8,
+      fontSize: 12,
+    },
     labelStyle: { color: "#e8e8ed" },
   };
 
@@ -133,13 +154,50 @@ export default function AnalyticsPage() {
         <p className="text-xs text-muted mt-0.5">All-time statistics and trends</p>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard title="Total Jobs" value={totalPrints} icon={Layers} iconColor="text-blue-400" iconBg="bg-blue-950/50" />
-        <StatCard title="Success Rate" value={`${successRate}%`} icon={CheckCircle} iconColor="text-emerald-400" iconBg="bg-emerald-950/50" />
-        <StatCard title="Print Time" value={formatDuration(totalTime)} icon={Clock} iconColor="text-purple-400" iconBg="bg-purple-950/50" />
-        <StatCard title="Filament Used" value={formatWeight(totalWeight)} icon={Weight} iconColor="text-amber-400" iconBg="bg-amber-950/50" />
-        <StatCard title="Money Spent" value={formatCurrency(totalCost)} icon={CircleDollarSign} iconColor="text-rose-400" iconBg="bg-rose-950/50" />
+      {/* KPIs — 6 stats in 2×3 grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <StatCard
+          title="Total Jobs"
+          value={totalPrints}
+          icon={Layers}
+          iconColor="text-blue-400"
+          iconBg="bg-blue-950/50"
+        />
+        <StatCard
+          title="Success Rate"
+          value={`${successRate}%`}
+          icon={CheckCircle}
+          iconColor="text-emerald-400"
+          iconBg="bg-emerald-950/50"
+        />
+        <StatCard
+          title="Print Time"
+          value={formatDuration(totalTime)}
+          icon={Clock}
+          iconColor="text-purple-400"
+          iconBg="bg-purple-950/50"
+        />
+        <StatCard
+          title="Filament Used"
+          value={formatWeight(totalWeight)}
+          icon={Weight}
+          iconColor="text-amber-400"
+          iconBg="bg-amber-950/50"
+        />
+        <StatCard
+          title="Money Spent"
+          value={formatCurrency(totalCost)}
+          icon={CircleDollarSign}
+          iconColor="text-rose-400"
+          iconBg="bg-rose-950/50"
+        />
+        <StatCard
+          title="Prints per Day"
+          value={avgPrintsPerDay}
+          icon={CalendarDays}
+          iconColor="text-sky-400"
+          iconBg="bg-sky-950/50"
+        />
       </div>
 
       {/* Print Activity */}
@@ -152,7 +210,9 @@ export default function AnalyticsPage() {
                 key={p}
                 onClick={() => setPeriod(p)}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-all ${
-                  period === p ? "bg-accent/15 text-accent" : "text-muted hover:text-zinc-300"
+                  period === p
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:text-zinc-300"
                 }`}
               >
                 {p.charAt(0).toUpperCase() + p.slice(1)}
@@ -162,10 +222,24 @@ export default function AnalyticsPage() {
         </div>
         <div style={{ height: 200 }}>
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={activityData} barSize={period === "monthly" ? 8 : 24} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <XAxis dataKey="label" tick={{ fill: "#6b6b76", fontSize: 10 }} axisLine={false} tickLine={false}
-                interval={period === "monthly" ? 4 : 0} />
-              <YAxis tick={{ fill: "#6b6b76", fontSize: 10 }} axisLine={false} tickLine={false} allowDecimals={false} />
+            <BarChart
+              data={activityData}
+              barSize={period === "monthly" ? 8 : 24}
+              margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+            >
+              <XAxis
+                dataKey="label"
+                tick={{ fill: "#6b6b76", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                interval={period === "monthly" ? 4 : 0}
+              />
+              <YAxis
+                tick={{ fill: "#6b6b76", fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
               <CartesianGrid vertical={false} stroke="#1c1c21" />
               <Tooltip {...tooltipStyle} />
               <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Prints" />
@@ -174,50 +248,43 @@ export default function AnalyticsPage() {
         </div>
       </Card>
 
-      {/* Two-column charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Filament by material */}
-        {materialData.length > 0 && (
-          <Card>
-            <CardTitle className="mb-5">Filament Usage by Material</CardTitle>
-            <div style={{ height: 200 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={materialData} barSize={32} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-                  <XAxis dataKey="name" tick={{ fill: "#6b6b76", fontSize: 10 }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: "#6b6b76", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}g`} />
-                  <Tooltip {...tooltipStyle} formatter={(v) => [`${v}g`, "Used"]} />
-                  <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                    {materialData.map((entry, i) => (
-                      <Cell key={i} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-        )}
-
-        {/* Per-day prints */}
+      {/* Filament usage by material */}
+      {materialData.length > 0 && (
         <Card>
-          <CardTitle className="mb-5">Summary</CardTitle>
-          <div className="space-y-3">
-            {[
-              { label: "Total Prints", value: totalPrints },
-              { label: "Completed", value: completedPrints, color: "text-emerald-400" },
-              { label: "Canceled / Failed", value: canceledPrints, color: "text-red-400" },
-              { label: "Success Rate", value: `${successRate}%` },
-              { label: "Avg Weight / Print", value: formatWeight(totalPrints > 0 ? totalWeight / totalPrints : 0) },
-              { label: "Avg Cost / Print", value: formatCurrency(totalPrints > 0 ? totalCost / totalPrints : 0) },
-              { label: "Avg Duration", value: formatDuration(totalPrints > 0 ? Math.round(totalTime / totalPrints) : 0) },
-            ].map(({ label, value, color }) => (
-              <div key={label} className="flex justify-between items-center py-1.5 border-b border-zinc-800/40 last:border-0">
-                <span className="text-xs text-muted">{label}</span>
-                <span className={`text-sm font-medium tabular-nums ${color ?? ""}`}>{value}</span>
-              </div>
-            ))}
+          <CardTitle className="mb-5">Filament Usage by Material</CardTitle>
+          <div style={{ height: 200 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={materialData}
+                barSize={36}
+                margin={{ top: 4, right: 4, left: -20, bottom: 0 }}
+              >
+                <XAxis
+                  dataKey="name"
+                  tick={{ fill: "#6b6b76", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fill: "#6b6b76", fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `${v}g`}
+                />
+                <Tooltip
+                  {...tooltipStyle}
+                  formatter={(v) => [`${v}g`, "Used"]}
+                />
+                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                  {materialData.map((entry, i) => (
+                    <Cell key={i} fill={entry.color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </div>
         </Card>
-      </div>
+      )}
     </div>
   );
 }

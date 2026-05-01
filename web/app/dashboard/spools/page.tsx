@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { SpoolIndicator } from "@/components/ui/SpoolIndicator";
 import { formatWeight, formatDate, stockColor } from "@/lib/utils";
-import { Package, Plus, Pencil, Trash2, Zap, Check } from "lucide-react";
+import { Package, Plus, Pencil, Trash2, Zap, Check, Archive } from "lucide-react";
 import toast from "react-hot-toast";
 import SpoolModal from "@/components/modals/SpoolModal";
 
@@ -43,7 +43,9 @@ export default function SpoolsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   function getFilament(id: number | null) {
     return filaments.find((f) => f.id === id);
@@ -84,7 +86,9 @@ export default function SpoolsPage() {
       ...form,
       filament_id: form.filament_id ? Number(form.filament_id) : null,
       price_per_kg: form.price_per_kg ? Number(form.price_per_kg) : null,
-      purchased_at: form.purchased_at ? new Date(form.purchased_at).toISOString() : null,
+      purchased_at: form.purchased_at
+        ? new Date(form.purchased_at).toISOString()
+        : null,
       nfc_uid: form.nfc_uid || null,
       notes: form.notes || null,
     };
@@ -106,7 +110,7 @@ export default function SpoolsPage() {
   async function handleActivate(id: number) {
     try {
       await api.activateSpool(id);
-      toast.success("Spool activated");
+      toast.success("Spool loaded");
       load();
     } catch (err: any) {
       toast.error(err.message);
@@ -129,7 +133,9 @@ export default function SpoolsPage() {
       <div className="space-y-4">
         <div className="h-7 skeleton w-24 rounded" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="h-56 skeleton rounded-xl" />)}
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="h-56 skeleton rounded-xl" />
+          ))}
         </div>
       </div>
     );
@@ -154,53 +160,90 @@ export default function SpoolsPage() {
       )}
 
       {spools.length === 0 ? (
-        <EmptyState icon={Package} title="No spools" description="Add spools to track your filament usage per roll." />
+        <EmptyState
+          icon={Package}
+          title="No spools"
+          description="Add spools to track your filament usage per roll."
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {spools.map((s) => {
             const fil = getFilament(s.filament_id);
-            const pct = s.total_weight_g > 0 ? Math.round((s.remaining_g / s.total_weight_g) * 100) : 0;
+            const pct =
+              s.total_weight_g > 0
+                ? Math.round((s.remaining_g / s.total_weight_g) * 100)
+                : 0;
 
             return (
-              <Card key={s.id} onClick={() => setSelectedSpool(s)} hoverable className="relative group flex flex-col gap-3">
-                {/* Active badge */}
-                {s.active && (
-                  <div className="absolute top-3 left-3">
-                    <Badge variant="success"><Check size={9} /> Active</Badge>
-                  </div>
-                )}
+              <Card
+                key={s.id}
+                onClick={() => setSelectedSpool(s)}
+                hoverable
+                className="relative group flex flex-col gap-3"
+              >
+                {/* Status badge — always visible, top-left */}
+                <div className="absolute top-3 left-3 z-10">
+                  {s.active ? (
+                    <Badge variant="success">
+                      <Check size={9} /> Active
+                    </Badge>
+                  ) : (
+                    <Badge variant="default">
+                      <Archive size={9} /> Stored
+                    </Badge>
+                  )}
+                </div>
 
                 {/* Edit/delete actions */}
                 <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                  <button className="p-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 transition-colors" onClick={(e) => openEdit(s, e)}>
+                  <button
+                    className="p-1.5 rounded-lg bg-zinc-800/90 hover:bg-zinc-700 transition-colors"
+                    onClick={(e) => openEdit(s, e)}
+                  >
                     <Pencil size={11} className="text-zinc-400" />
                   </button>
-                  <button className="p-1.5 rounded-lg bg-zinc-800/90 hover:bg-red-900/60 transition-colors" onClick={(e) => { e.stopPropagation(); setConfirmDelete(s.id); }}>
+                  <button
+                    className="p-1.5 rounded-lg bg-zinc-800/90 hover:bg-red-900/60 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDelete(s.id);
+                    }}
+                  >
                     <Trash2 size={11} className="text-red-400" />
                   </button>
                 </div>
 
                 {/* Spool visual */}
-                <div className="flex justify-center pt-5">
-                  <SpoolIndicator remaining={s.remaining_g} total={s.total_weight_g} color={fil?.color_hex ?? "#555"} size={100} />
+                <div className="flex justify-center pt-6">
+                  <SpoolIndicator
+                    remaining={s.remaining_g}
+                    total={s.total_weight_g}
+                    color={fil?.color_hex ?? "#555"}
+                    size={100}
+                  />
                 </div>
 
                 {/* Filament info */}
                 <div className="text-center">
                   <p className="font-semibold text-sm">{fil?.color_name ?? "Unknown"}</p>
-                  <p className="text-xs text-muted">{fil ? `${fil.brand} · ${fil.material}` : "No filament"}</p>
+                  <p className="text-xs text-muted">
+                    {fil ? `${fil.brand} · ${fil.material}` : "No filament"}
+                  </p>
                 </div>
 
                 {/* Weight bar */}
                 <div>
                   <div className="flex justify-between text-xs text-muted mb-1">
                     <span>{formatWeight(s.remaining_g)}</span>
-                    <span>{pct}%</span>
+                    <span className="tabular-nums">{pct}%</span>
                   </div>
                   <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full transition-all"
-                      style={{ width: `${pct}%`, backgroundColor: stockColor(pct, fil?.color_hex) }}
+                      style={{
+                        width: `${pct}%`,
+                        backgroundColor: stockColor(pct, fil?.color_hex),
+                      }}
                     />
                   </div>
                 </div>
@@ -208,16 +251,21 @@ export default function SpoolsPage() {
                 {/* Info row */}
                 <div className="grid grid-cols-2 gap-1.5 text-[10px] text-muted">
                   <span>{s.price_per_kg ? `€${s.price_per_kg}/kg` : "No price"}</span>
-                  <span className="text-right">{s.last_used_at ? formatDate(s.last_used_at) : "Never used"}</span>
+                  <span className="text-right">
+                    {s.last_used_at ? formatDate(s.last_used_at) : "Never used"}
+                  </span>
                 </div>
 
-                {/* Load button */}
+                {/* Load button — only for non-active spools */}
                 {!s.active && (
                   <Button
                     variant="secondary"
                     size="sm"
                     className="w-full"
-                    onClick={(e) => { e.stopPropagation(); handleActivate(s.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleActivate(s.id);
+                    }}
                   >
                     <Zap size={12} /> Load Spool
                   </Button>
@@ -229,10 +277,16 @@ export default function SpoolsPage() {
       )}
 
       {/* Form Modal */}
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editingId ? "Edit Spool" : "Add Spool"}>
+      <Modal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        title={editingId ? "Edit Spool" : "Add Spool"}
+      >
         <form onSubmit={handleSave} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide">Filament</label>
+            <label className="block text-xs font-medium text-zinc-400 uppercase tracking-wide">
+              Filament
+            </label>
             <select
               className="w-full rounded-lg border border-zinc-800 bg-zinc-900/80 px-3.5 py-2.5 text-sm text-zinc-100 outline-none focus:border-accent"
               value={form.filament_id}
@@ -241,38 +295,96 @@ export default function SpoolsPage() {
             >
               <option value="">Select filament…</option>
               {filaments.map((f) => (
-                <option key={f.id} value={f.id}>{f.brand} — {f.color_name} ({f.material})</option>
+                <option key={f.id} value={f.id}>
+                  {f.brand} — {f.color_name} ({f.material})
+                </option>
               ))}
             </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Total Weight (g)" type="number" value={form.total_weight_g} onChange={(e) => setForm({ ...form, total_weight_g: Number(e.target.value) })} required />
-            <Input label="Remaining (g)" type="number" value={form.remaining_g} onChange={(e) => setForm({ ...form, remaining_g: Number(e.target.value) })} required />
+            <Input
+              label="Total Weight (g)"
+              type="number"
+              value={form.total_weight_g}
+              onChange={(e) =>
+                setForm({ ...form, total_weight_g: Number(e.target.value) })
+              }
+              required
+            />
+            <Input
+              label="Remaining (g)"
+              type="number"
+              value={form.remaining_g}
+              onChange={(e) =>
+                setForm({ ...form, remaining_g: Number(e.target.value) })
+              }
+              required
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Price / kg (€)" type="number" step="0.01" placeholder="24.99" value={form.price_per_kg} onChange={(e) => setForm({ ...form, price_per_kg: e.target.value })} />
-            <Input label="Purchased" type="date" value={form.purchased_at} onChange={(e) => setForm({ ...form, purchased_at: e.target.value })} />
+            <Input
+              label="Price / kg (€)"
+              type="number"
+              step="0.01"
+              placeholder="24.99"
+              value={form.price_per_kg}
+              onChange={(e) =>
+                setForm({ ...form, price_per_kg: e.target.value })
+              }
+            />
+            <Input
+              label="Purchased"
+              type="date"
+              value={form.purchased_at}
+              onChange={(e) =>
+                setForm({ ...form, purchased_at: e.target.value })
+              }
+            />
           </div>
 
-          <Input label="NFC UID (optional)" placeholder="04:A2:3F:…" value={form.nfc_uid} onChange={(e) => setForm({ ...form, nfc_uid: e.target.value })} />
+          <Input
+            label="NFC UID (optional)"
+            placeholder="04:A2:3F:…"
+            value={form.nfc_uid}
+            onChange={(e) => setForm({ ...form, nfc_uid: e.target.value })}
+          />
 
           <div className="flex justify-end gap-3 pt-1">
-            <Button variant="secondary" type="button" onClick={() => setFormOpen(false)}>Cancel</Button>
+            <Button
+              variant="secondary"
+              type="button"
+              onClick={() => setFormOpen(false)}
+            >
+              Cancel
+            </Button>
             <Button type="submit">{editingId ? "Update" : "Create"}</Button>
           </div>
         </form>
       </Modal>
 
       {/* Delete Confirm */}
-      <Modal open={confirmDelete !== null} onClose={() => setConfirmDelete(null)} title="Delete Spool?" size="sm">
-        <p className="text-sm text-muted mb-5">This will permanently delete this spool and its history.</p>
+      <Modal
+        open={confirmDelete !== null}
+        onClose={() => setConfirmDelete(null)}
+        title="Delete Spool?"
+        size="sm"
+      >
+        <p className="text-sm text-muted mb-5">
+          This will permanently delete this spool and its history.
+        </p>
         <div className="flex gap-3">
-          <Button variant="danger" className="flex-1" onClick={() => confirmDelete !== null && handleDelete(confirmDelete)}>
+          <Button
+            variant="danger"
+            className="flex-1"
+            onClick={() => confirmDelete !== null && handleDelete(confirmDelete)}
+          >
             <Trash2 size={14} /> Delete
           </Button>
-          <Button variant="secondary" onClick={() => setConfirmDelete(null)}>Cancel</Button>
+          <Button variant="secondary" onClick={() => setConfirmDelete(null)}>
+            Cancel
+          </Button>
         </div>
       </Modal>
 
@@ -281,7 +393,11 @@ export default function SpoolsPage() {
           spool={selectedSpool}
           filament={getFilament(selectedSpool.filament_id)}
           onClose={() => setSelectedSpool(null)}
-          onActivate={async () => { await api.activateSpool(selectedSpool.id); setSelectedSpool(null); load(); }}
+          onActivate={async () => {
+            await api.activateSpool(selectedSpool.id);
+            setSelectedSpool(null);
+            load();
+          }}
         />
       )}
     </div>

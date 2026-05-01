@@ -30,17 +30,11 @@ Live status, filament inventory, print history, cost tracking — all in one pla
 
 <br />
 
-> 📸 **Screenshots / demo video wanted here** — if you have the dashboard running, open a PR or issue with screenshots and we'll feature them prominently!
-
 </div>
 
 ---
 
 ## ✨ Features
-
-<table>
-<tr>
-<td width="50%">
 
 ### 🖨️ Live Printer Status
 Real-time data streamed directly from your printer over your local network via MQTT — no polling, no lag.
@@ -49,9 +43,9 @@ Real-time data streamed directly from your printer over your local network via M
 - Cooling fan speed and print speed level
 - Online / offline detection
 - Auto-reconnects after network blips
+<img width="800" alt="{FD839F04-1978-4423-B766-153F8D3C6BBA}" src="https://github.com/user-attachments/assets/45fe02d7-1744-44b9-a927-ea94e821ea9a" /> <br> <br>
 
-</td>
-<td width="50%">
+
 
 ### 📊 Print History & Analytics
 Every print is automatically captured and logged when it completes.
@@ -60,11 +54,9 @@ Every print is automatically captured and logged when it completes.
 - Success rate statistics
 - Cover image thumbnails from Bambu Cloud
 - Delete individual records to clean up your history
+<img width="800" alt="{E3A513A6-D0BE-4BAB-AAD6-5E50F2B00795}" src="https://github.com/user-attachments/assets/f552e7e1-4aed-4a49-a5d9-990ed040b236" />
+<img width="800" alt="{3D7260DF-735A-4490-AD50-93BE3D179B08}" src="https://github.com/user-attachments/assets/92f3735d-ce22-45bb-8168-a2b9ece6b6b6" /><br> <br>
 
-</td>
-</tr>
-<tr>
-<td width="50%">
 
 ### 🎨 Filament Library
 Build a catalogue of every filament type you own, with all the details that matter.
@@ -73,9 +65,8 @@ Build a catalogue of every filament type you own, with all the details that matt
 - Bambu AMS info index for automatic slot mapping
 - Remaining stock aggregated across all spools
 - Average price per kg, calculated from real purchase data
+<img width="800" alt="{7B86884E-5E37-471E-8EDC-6E92E82EE0DF}" src="https://github.com/user-attachments/assets/c0aaee83-4664-4203-b07f-e34af6212b6e" /><br> <br>
 
-</td>
-<td width="50%">
 
 ### 🧵 Spool Inventory
 Track individual spools from purchase to empty.
@@ -84,95 +75,13 @@ Track individual spools from purchase to empty.
 - NFC tag support — scan a tag to instantly activate a spool
 - Price per kg for per-print cost calculations
 - Usage automatically deducted after every print
+<img width="800" alt="{D344FB10-801D-43ED-AEC8-F6974E3A808E}" src="https://github.com/user-attachments/assets/63db7912-07f4-4c99-8975-9bca487dd1b7" /><br> <br>
 
-</td>
-</tr>
-<tr>
-<td width="50%">
 
-### 💰 Cost Estimation
-Know exactly how much each print costs before you even remove it from the bed.
-- Cost calculated from spool price × grams used
-- Averages across the last 5 purchases of the same filament
-- Cumulative cost displayed on the dashboard overview
-- Per-print breakdown in print history
 
-</td>
-<td width="50%">
-
-### 🔐 Self-Hosted & Private
-Your data lives on your hardware. Full stop.
-- Single-user account with secure password hashing
-- Guided setup wizard — no manual config files needed
-- All data stored in a local PostgreSQL database
-- Works entirely on your LAN; cloud is optional for history sync
-- Docker Compose deployment — up in minutes
-
-</td>
-</tr>
-</table>
 
 ---
 
-## 📸 Screenshots
-
-> 🙏 **We need your screenshots!**  
-> This project is young and we'd love to show it off properly.  
-> If you're running OpenPrintDashboard, please [open an issue](../../issues/new) or PR with screenshots of:
-> - The main dashboard (especially while a print is running!)
-> - The filament / spool pages
-> - The print history table
-> - The setup wizard
-> - <img width="976" height="863" alt="{09A32FFD-8D3D-494B-BB68-3A63E58B7C85}" src="https://github.com/user-attachments/assets/fa60fa82-6124-48d6-9da4-5885fd0f8cba" />
-<img width="961" height="714" alt="{38251648-B05F-4E96-B369-7CCE06B1FD88}" src="https://github.com/user-attachments/assets/1686ee65-41e0-4c54-8b83-7d71874fe846" />
-<img width="962" height="690" alt="{EA0E10D4-21A5-47C8-8605-5130462C086A}" src="https://github.com/user-attachments/assets/0e118c5d-f6e2-4f23-a293-f90e4656d103" />
-<img width="976" height="962" alt="{FF73790A-81B4-4846-BBDB-DEE7133FDAE7}" src="https://github.com/user-attachments/assets/c0222dc0-6fe0-4cb7-bb0a-e2e5a1f4ddbb" />
-
-
-
-
->
-> A short screen recording or GIF of the live printer status updating in real time would be absolutely incredible.
-
-*Until then, here's what each page contains at a glance:*
-
-| Page | What you'll see |
-|------|----------------|
-| **Dashboard** | Stat cards (prints, filament used, print time, total cost) · live printer card with temps and progress · loaded filament swatch · inventory summary · recent prints table |
-| **Printer** | Device card with online/offline badge · nozzle/bed/fan/speed cards · active print progress · firmware versions |
-| **Print History** | Filterable table with cover thumbnails · quick stats (total, completed, canceled, success rate) · detail modal |
-| **Filaments** | Color grid of all filament types · remaining weight per type · temperature profiles |
-| **Spools** | Spool cards with color-coded fill bars · active spool badge · NFC UID display |
-| **Settings** | Account info · Bambu Cloud connection status · printer IP/serial/access code editor |
-
----
-
-## 🏗️ Architecture
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        Your Network                          │
-│                                                             │
-│   ┌──────────────┐   MQTT/8883   ┌──────────────────────┐  │
-│   │  Bambu Lab   │◄─────────────►│                      │  │
-│   │   Printer    │               │    FastAPI Backend    │  │
-│   └──────────────┘               │    (Python 3.13)     │  │
-│                                  │                      │  │
-│   ┌──────────────┐   REST API    │  ┌────────────────┐  │  │
-│   │  Bambu Lab   │◄─────────────►│  │  PostgreSQL 16 │  │  │
-│   │  Cloud API   │               │  │   (your data)  │  │  │
-│   └──────────────┘               │  └────────────────┘  │  │
-│                                  └──────────┬───────────┘  │
-│                                             │ REST          │
-│                                  ┌──────────▼───────────┐  │
-│                                  │   Next.js Frontend   │  │
-│                                  │  (React 19 + TS)     │  │
-│                                  └──────────────────────┘  │
-│                                             ▲               │
-└─────────────────────────────────────────────┼───────────────┘
-                                              │
-                                        Your Browser
-```
 
 **Stack at a glance:**
 
@@ -228,11 +137,27 @@ That's it. Docker will pull the images, start the database, API, and web fronten
 Open **http://localhost:3000** in your browser.
 
 You'll be guided through three steps:
-
+<br><br>
 ```
-Step 1: Create Account   →   Step 2: Bambu Lab Login   →   Step 3: Printer Setup
-     (local admin)            (cloud sync + history)        (LAN connection)
+Step 1: Create Account
+     (local admin)
 ```
+<img width="600" alt="{09A32FFD-8D3D-494B-BB68-3A63E58B7C85}" src="https://github.com/user-attachments/assets/fa60fa82-6124-48d6-9da4-5885fd0f8cba" /><br><br>
+```
+Step 2: Bambu Lab Login   →   Step 3: Printer Setup
+(cloud sync + history)        (LAN connection)
+```
+<img width="600" alt="{38251648-B05F-4E96-B369-7CCE06B1FD88}" src="https://github.com/user-attachments/assets/1686ee65-41e0-4c54-8b83-7d71874fe846" /><br><br>
+```
+Step 3: Verification Code
+     (IF activated)
+```
+<img width="600" alt="{EA0E10D4-21A5-47C8-8605-5130462C086A}" src="https://github.com/user-attachments/assets/0e118c5d-f6e2-4f23-a293-f90e4656d103" /><br><br>
+```
+Step 4: Printer Setup
+   (LAN connection)
+```
+<img width="600" alt="{FF73790A-81B4-4846-BBDB-DEE7133FDAE7}" src="https://github.com/user-attachments/assets/c0222dc0-6fe0-4cb7-bb0a-e2e5a1f4ddbb" />
 
 > **Note:** After completing the printer setup, the backend will automatically connect to your printer via MQTT. First data usually arrives within a few seconds.
 
@@ -280,20 +205,6 @@ services:
       - "8080:3000"   # Change 8080 to whatever you want
 ```
 
-### API Environment Variables
-
-The backend reads from `api/.env` (copy from `api/.env.example`):
-
-```env
-# Optional — the setup wizard writes these to the database automatically
-PRINTER_IP=192.168.0.100
-PRINTER_SERIAL=03919C462700XXX
-PRINTER_ACCESS_CODE=12345678
-
-DEBUG=False
-```
-
-> **Tip:** You don't need to set these manually — the setup wizard saves them to the database. Environment variables are a fallback for headless deployments.
 
 ---
 
@@ -309,19 +220,6 @@ Your database data is persisted in a Docker volume (`postgres_data`) and survive
 
 ---
 
-## 🧵 NFC Spool Scanning
-
-OpenPrintDashboard supports NFC tags on spools for instant activation. Here's the flow:
-
-1. Attach an NFC tag to a spool
-2. POST the tag's UID to `/spools/scan` — the API matches it to a spool and activates it
-3. First scan of an unknown tag returns `found: false` with a list of unassigned spools
-4. Assign the tag to a spool via `/spools/scan/assign`
-5. Every subsequent scan of that tag auto-activates the correct spool
-
-This is designed to work with a small NFC reader connected to a Raspberry Pi or similar device sitting next to your printer.
-
----
 
 ## 🗺️ Roadmap
 

@@ -52,6 +52,25 @@ function fakeDelay<T>(data: T, ms = 120): Promise<T> {
   return new Promise((resolve) => setTimeout(() => resolve(data), ms));
 }
 
+// ─── Demo Storage Helpers ───────────────────────────────────────────────────
+function getDemoData<T>(key: string, defaultData: T[]): T[] {
+  if (typeof window === "undefined") return defaultData;
+  const stored = localStorage.getItem(`demo_${key}`);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch (e) {
+      console.error(`Failed to parse demo data for ${key}`, e);
+    }
+  }
+  return defaultData;
+}
+
+function saveDemoData<T>(key: string, data: T[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`demo_${key}`, JSON.stringify(data));
+}
+
 export const api = {
   // ── Setup / auth ────────────────────────────────────────────────────────────
   getSetupStatus: () => {
@@ -240,38 +259,55 @@ export const api = {
 
   // ── Filaments ───────────────────────────────────────────────────────────────
   getFilaments: () => {
-    if (DEMO_MODE) return fakeDelay([...DEMO_FILAMENTS]);
+    if (DEMO_MODE) return fakeDelay(getDemoData("filaments", DEMO_FILAMENTS));
     return request<any[]>("/filaments/");
   },
 
   getFilament: (id: number) => {
-    if (DEMO_MODE) return fakeDelay(DEMO_FILAMENTS.find((f) => f.id === id));
+    if (DEMO_MODE) return fakeDelay(getDemoData("filaments", DEMO_FILAMENTS).find((f) => f.id === id));
     return request<any>(`/filaments/${id}`);
   },
 
   createFilament: (data: any) => {
-    if (DEMO_MODE) return fakeDelay({ ...data, id: Date.now() });
+    if (DEMO_MODE) {
+      const items = getDemoData("filaments", DEMO_FILAMENTS);
+      const newItem = { ...data, id: Date.now() };
+      saveDemoData("filaments", [...items, newItem]);
+      return fakeDelay(newItem);
+    }
     return request<any>("/filaments/", { method: "POST", body: JSON.stringify(data) });
   },
 
   updateFilament: (id: number, data: any) => {
-    if (DEMO_MODE) return fakeDelay({ ...data, id });
+    if (DEMO_MODE) {
+      const items = getDemoData("filaments", DEMO_FILAMENTS);
+      const updated = items.map((f) => (f.id === id ? { ...f, ...data } : f));
+      saveDemoData("filaments", updated);
+      return fakeDelay({ ...data, id });
+    }
     return request<any>(`/filaments/${id}`, { method: "PUT", body: JSON.stringify(data) });
   },
 
   deleteFilament: (id: number) => {
-    if (DEMO_MODE) return fakeDelay({ ok: true });
+    if (DEMO_MODE) {
+      const items = getDemoData("filaments", DEMO_FILAMENTS);
+      saveDemoData("filaments", items.filter((f) => f.id !== id));
+      return fakeDelay({ ok: true });
+    }
     return request<{ ok: boolean }>(`/filaments/${id}`, { method: "DELETE" });
   },
 
   getFilamentSpools: (id: number) => {
-    if (DEMO_MODE) return fakeDelay(DEMO_SPOOLS.filter((s) => s.filament_id === id));
+    if (DEMO_MODE) {
+      const spools = getDemoData("spools", DEMO_SPOOLS);
+      return fakeDelay(spools.filter((s) => s.filament_id === id));
+    }
     return request<any[]>(`/filaments/${id}/spools`);
   },
 
   getFilamentStats: (id: number) => {
     if (DEMO_MODE) {
-      const spools = DEMO_SPOOLS.filter((s) => s.filament_id === id);
+      const spools = getDemoData("spools", DEMO_SPOOLS).filter((s) => s.filament_id === id);
       const prints = DEMO_PRINTS.filter((p) =>
         spools.some((s) => s.id === p.spool_id)
       );
@@ -296,9 +332,10 @@ export const api = {
   // ── Spools ──────────────────────────────────────────────────────────────────
   getSpools: (filamentId?: number) => {
     if (DEMO_MODE) {
+      const spools = getDemoData("spools", DEMO_SPOOLS);
       const result = filamentId
-        ? DEMO_SPOOLS.filter((s) => s.filament_id === filamentId)
-        : [...DEMO_SPOOLS];
+        ? spools.filter((s) => s.filament_id === filamentId)
+        : [...spools];
       return fakeDelay(result);
     }
     return request<any[]>(`/spools/${filamentId ? `?filament_id=${filamentId}` : ""}`);
@@ -306,7 +343,8 @@ export const api = {
 
   getActiveSpool: () => {
     if (DEMO_MODE) {
-      const active = DEMO_SPOOLS.find((s) => s.active);
+      const spools = getDemoData("spools", DEMO_SPOOLS);
+      const active = spools.find((s) => s.active);
       if (!active) return Promise.reject(new ApiError(404, "No active spool"));
       return fakeDelay(active);
     }
@@ -314,31 +352,45 @@ export const api = {
   },
 
   getSpool: (id: number) => {
-    if (DEMO_MODE) return fakeDelay(DEMO_SPOOLS.find((s) => s.id === id));
+    if (DEMO_MODE) return fakeDelay(getDemoData("spools", DEMO_SPOOLS).find((s) => s.id === id));
     return request<any>(`/spools/${id}`);
   },
 
   createSpool: (data: any) => {
-    if (DEMO_MODE) return fakeDelay({ ...data, id: Date.now() });
+    if (DEMO_MODE) {
+      const items = getDemoData("spools", DEMO_SPOOLS);
+      const newItem = { ...data, id: Date.now() };
+      saveDemoData("spools", [...items, newItem]);
+      return fakeDelay(newItem);
+    }
     return request<any>("/spools/", { method: "POST", body: JSON.stringify(data) });
   },
 
   updateSpool: (id: number, data: any) => {
-    if (DEMO_MODE) return fakeDelay({ ...data, id });
+    if (DEMO_MODE) {
+      const items = getDemoData("spools", DEMO_SPOOLS);
+      const updated = items.map((s) => (s.id === id ? { ...s, ...data } : s));
+      saveDemoData("spools", updated);
+      return fakeDelay({ ...data, id });
+    }
     return request<any>(`/spools/${id}`, { method: "PUT", body: JSON.stringify(data) });
   },
 
   deleteSpool: (id: number) => {
-    if (DEMO_MODE) return fakeDelay({ ok: true });
+    if (DEMO_MODE) {
+      const items = getDemoData("spools", DEMO_SPOOLS);
+      saveDemoData("spools", items.filter((s) => s.id !== id));
+      return fakeDelay({ ok: true });
+    }
     return request<{ ok: boolean }>(`/spools/${id}`, { method: "DELETE" });
   },
 
   activateSpool: (id: number) => {
     if (DEMO_MODE) {
-      DEMO_SPOOLS.forEach((s) => {
-        s.active = s.id === id;
-      });
-      const spool = DEMO_SPOOLS.find((s) => s.id === id);
+      const items = getDemoData("spools", DEMO_SPOOLS);
+      const updated = items.map((s) => ({ ...s, active: s.id === id }));
+      saveDemoData("spools", updated);
+      const spool = updated.find((s) => s.id === id);
       return fakeDelay(spool ?? { id });
     }
     return request<any>(`/spools/${id}/activate`, { method: "PUT" });
@@ -350,7 +402,11 @@ export const api = {
   },
 
   assignNfc: (uid: string, spoolId: number) => {
-    if (DEMO_MODE) return fakeDelay({ ok: true, spool: DEMO_SPOOLS.find((s) => s.id === spoolId) });
+    if (DEMO_MODE) {
+      const spools = getDemoData("spools", DEMO_SPOOLS);
+      const spool = spools.find((s) => s.id === spoolId);
+      return fakeDelay({ ok: true, spool });
+    }
     return request<any>("/spools/scan/assign", {
       method: "POST",
       body: JSON.stringify({ uid, spool_id: spoolId }),

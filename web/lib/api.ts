@@ -334,7 +334,13 @@ export const api = {
   },
 
   activateSpool: (id: number) => {
-    if (DEMO_MODE) return fakeDelay(DEMO_SPOOLS.find((s) => s.id === id) ?? { id });
+    if (DEMO_MODE) {
+      DEMO_SPOOLS.forEach((s) => {
+        s.active = s.id === id;
+      });
+      const spool = DEMO_SPOOLS.find((s) => s.id === id);
+      return fakeDelay(spool ?? { id });
+    }
     return request<any>(`/spools/${id}/activate`, { method: "PUT" });
   },
 

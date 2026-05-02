@@ -26,7 +26,7 @@ Live status, filament inventory, print history, cost tracking — all in one pla
 
 <br />
 
-[🚀 Quick Start](#-quick-start) · [✨ Features](#-features) · [📸 Screenshots](#-screenshots) · [⚙️ Configuration](#%EF%B8%8F-configuration) · [🗺️ Roadmap](#%EF%B8%8F-roadmap)
+[🚀 Quick Start](#-quick-start) · [✨ Features](#-features) · [⚙️ Configuration](#%EF%B8%8F-configuration) · [🗺️ Roadmap](#%EF%B8%8F-roadmap)
 
 <br />
 

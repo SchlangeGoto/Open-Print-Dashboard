@@ -2,21 +2,25 @@
 
 <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square" />
 <img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
-<img src="https://img.shields.io/badge/self--hosted-yes-purple?style=flat-square" />
-<img src="https://img.shields.io/badge/cloud-optional-orange?style=flat-square" />
 <img src="https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
 
-<br /><br />
+<br> <br>
 
 ```
-  ██████╗ ██████╗ ███████╗███╗   ██╗    ██████╗ ██████╗ ██╗███╗   ██╗████████╗
+██████╗ ██████╗ ███████╗███╗   ██╗    ██████╗ ██████╗ ██╗███╗   ██╗████████╗
  ██╔═══██╗██╔══██╗██╔════╝████╗  ██║    ██╔══██╗██╔══██╗██║████╗  ██║╚══██╔══╝
  ██║   ██║██████╔╝█████╗  ██╔██╗ ██║    ██████╔╝██████╔╝██║██╔██╗ ██║   ██║   
  ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║    ██╔═══╝ ██╔══██╗██║██║╚██╗██║   ██║   
  ╚██████╔╝██║     ███████╗██║ ╚████║    ██║      ██║  ██║██║██║ ╚████║   ██║   
   ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝   ╚═╝      ╚═╝  ╚═╝╚═╝╚═╝  ╚═══╝   ╚═╝  
 
-        D  A  S  H  B  O  A  R  D
+        ██████╗  █████╗ ███████╗██╗  ██╗
+        ██╔══██╗██╔══██╗██╔════╝██║  ██║
+        ██║  ██║███████║███████╗███████║
+        ██║  ██║██╔══██║╚════██║██╔══██║
+        ██████╔╝██║  ██║███████║██║  ██║
+        ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝
+
 ```
 
 ### Your 3D printer, fully visible. No cloud required.
@@ -43,6 +47,7 @@ Real-time data streamed directly from your printer over your local network via M
 - Cooling fan speed and print speed level
 - Online / offline detection
 - Auto-reconnects after network blips
+
 <img width="800" alt="{FD839F04-1978-4423-B766-153F8D3C6BBA}" src="https://github.com/user-attachments/assets/45fe02d7-1744-44b9-a927-ea94e821ea9a" /> <br> <br>
 
 
@@ -54,6 +59,7 @@ Every print is automatically captured and logged when it completes.
 - Success rate statistics
 - Cover image thumbnails from Bambu Cloud
 - Delete individual records to clean up your history
+
 <img width="800" alt="{E3A513A6-D0BE-4BAB-AAD6-5E50F2B00795}" src="https://github.com/user-attachments/assets/f552e7e1-4aed-4a49-a5d9-990ed040b236" />
 <img width="800" alt="{3D7260DF-735A-4490-AD50-93BE3D179B08}" src="https://github.com/user-attachments/assets/92f3735d-ce22-45bb-8168-a2b9ece6b6b6" /><br> <br>
 
@@ -65,6 +71,7 @@ Build a catalogue of every filament type you own, with all the details that matt
 - Bambu AMS info index for automatic slot mapping
 - Remaining stock aggregated across all spools
 - Average price per kg, calculated from real purchase data
+
 <img width="800" alt="{7B86884E-5E37-471E-8EDC-6E92E82EE0DF}" src="https://github.com/user-attachments/assets/c0aaee83-4664-4203-b07f-e34af6212b6e" /><br> <br>
 
 
@@ -75,6 +82,7 @@ Track individual spools from purchase to empty.
 - NFC tag support — scan a tag to instantly activate a spool
 - Price per kg for per-print cost calculations
 - Usage automatically deducted after every print
+
 <img width="800" alt="{D344FB10-801D-43ED-AEC8-F6974E3A808E}" src="https://github.com/user-attachments/assets/63db7912-07f4-4c99-8975-9bca487dd1b7" /><br> <br>
 
 
@@ -176,15 +184,6 @@ You'll need three values from your printer:
 | **Access Code** | Printer touchscreen → **Settings** → **Network** → **Access Code** — requires LAN mode to be enabled |
 
 📖 Official guide: [Bambu Lab Wiki — Finding Serial Number](https://wiki.bambulab.com/en/general/find-sn)
-
-### Enabling LAN Mode
-
-LAN mode must be enabled on your printer for direct MQTT communication to work:
-
-1. On the printer screen, go to **Settings**
-2. Navigate to **Network**
-3. Enable **LAN Mode** (also called "Local LAN")
-4. Note the **Access Code** shown on this screen
 
 ### Docker Compose Configuration
 

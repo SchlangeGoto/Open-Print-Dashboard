@@ -55,6 +55,10 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: #2a2a36; }
 
 /* Page transition */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: translateY(0); }

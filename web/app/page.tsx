@@ -6,7 +6,7 @@ import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Disc3, AlertCircle } from "lucide-react";
+import { Disc3, AlertCircle, FlaskConical } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -18,6 +18,15 @@ export default function Home() {
   const [loginPassword, setLoginPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Pre-fill saved demo credentials as a hint
+  const [savedUsername, setSavedUsername] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setSavedUsername(localStorage.getItem("demo_username"));
+    }
+  }, []);
 
   useEffect(() => {
     if (isLoading) return;
@@ -42,8 +51,16 @@ export default function Home() {
     e.preventDefault();
     setBusy(true);
     setError("");
+
+    // Demo mode: use whatever was typed, or fall back to saved/default
+    const savedUser = typeof window !== "undefined"
+      ? localStorage.getItem("demo_username")
+      : null;
+    const finalUsername = loginUsername.trim() || savedUser || "demo";
+    const finalPassword = loginPassword || "demo";
+
     try {
-      const result = await api.loginUser(loginUsername, loginPassword);
+      const result = await api.loginUser(finalUsername, finalPassword);
       if (result.ok) {
         login(result.username, result.token);
         router.push("/dashboard");
@@ -77,22 +94,36 @@ export default function Home() {
           <p className="text-sm text-muted mt-1">Sign in to your dashboard</p>
         </div>
 
+        {/* Demo hint */}
+        <div className="flex items-start gap-2.5 rounded-xl border border-violet-700/50 bg-violet-950/40 px-4 py-3 text-sm text-violet-300 mb-5">
+          <FlaskConical size={15} className="shrink-0 mt-0.5 text-violet-400" />
+          <span>
+            Demo mode —{" "}
+            {savedUsername ? (
+              <>
+                sign in as <strong className="text-violet-200">{savedUsername}</strong> with
+                your setup password, or just leave the fields empty and click Sign in.
+              </>
+            ) : (
+              "leave the fields empty and click Sign in, or type anything."
+            )}
+          </span>
+        </div>
+
         <form onSubmit={handleLogin} className="space-y-4">
           <Input
             label="Username"
-            placeholder="Enter your username"
+            placeholder={savedUsername ? savedUsername : "Leave empty or type anything"}
             value={loginUsername}
             onChange={(e) => setLoginUsername(e.target.value)}
-            required
             autoComplete="username"
           />
           <Input
             label="Password"
             type="password"
-            placeholder="Password"
+            placeholder="Leave empty or type anything"
             value={loginPassword}
             onChange={(e) => setLoginPassword(e.target.value)}
-            required
             autoComplete="current-password"
           />
 

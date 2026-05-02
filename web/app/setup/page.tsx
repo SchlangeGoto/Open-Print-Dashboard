@@ -16,6 +16,8 @@ import {
   AlertCircle,
   Info,
   ExternalLink,
+  Zap,
+  FlaskConical,
 } from "lucide-react";
 
 type SetupStep = "account" | "bambu" | "bambu-code" | "printer" | "done";
@@ -25,6 +27,16 @@ const steps = [
   { key: "bambu", label: "Bambu Lab Login" },
   { key: "printer", label: "Printer Setup" },
 ];
+
+// ─── Demo banner shown on every step ────────────────────────────────────────
+function DemoBanner({ text }: { text: string }) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-violet-700/50 bg-violet-950/40 px-4 py-3 text-sm text-violet-300 mb-5">
+      <FlaskConical size={15} className="shrink-0 mt-0.5 text-violet-400" />
+      <span>{text}</span>
+    </div>
+  );
+}
 
 export default function SetupPage() {
   const router = useRouter();
@@ -49,15 +61,11 @@ export default function SetupPage() {
   const [printerAccessCode, setPrinterAccessCode] = useState("");
   const [showPrinterHelp, setShowPrinterHelp] = useState(false);
 
-  // Redirect if already set up
+  // Redirect if already set up (setup_complete in localStorage)
   useEffect(() => {
     api.getSetupStatus().then((status) => {
       if (status.setup_complete) {
         router.push("/");
-      } else if (status.user_created && !status.bambu_logged_in) {
-        setStep("bambu");
-      } else if (status.user_created && status.bambu_logged_in && !status.printer_configured) {
-        setStep("printer");
       }
     }).catch(() => {});
   }, [router]);
@@ -66,28 +74,29 @@ export default function SetupPage() {
     (s) => s.key === step || (step === "bambu-code" && s.key === "bambu"),
   );
 
-  // ─── Account creation ───────────────────────────
+  // ─── Account creation ──────────────────────────────────────────────────────
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    if (password !== confirmPassword) {
+    // In demo mode, any username works — but warn if both fields are empty
+    const finalUsername = username.trim() || "demo";
+    const finalPassword = password || "demo";
+
+    if (password && confirmPassword && password !== confirmPassword) {
       setError("Passwords don't match");
-      return;
-    }
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
       return;
     }
 
     setBusy(true);
     try {
-      const res = await api.register(username, password);
-      if (res.ok) {
-        const auth = await api.loginUser(username, password);
-        login(auth.username, auth.token);
-        setStep("bambu");
-      }
+      await api.register(finalUsername, finalPassword);
+      const auth = await api.loginUser(finalUsername, finalPassword);
+      // Save demo credentials to browser so the login page can use them
+      localStorage.setItem("demo_username", finalUsername);
+      localStorage.setItem("demo_password", finalPassword);
+      login(auth.username, auth.token);
+      setStep("bambu");
     } catch (err: any) {
       setError(err.message || "Failed to create account");
     } finally {
@@ -95,19 +104,24 @@ export default function SetupPage() {
     }
   }
 
-  // ─── Bambu Lab login ────────────────────────────
+  function skipToStep(next: SetupStep) {
+    // Still save a placeholder username so the dashboard shows something
+    if (!localStorage.getItem("demo_username")) {
+      localStorage.setItem("demo_username", "demo");
+      localStorage.setItem("demo_password", "demo");
+      login("demo", "demo-token-skipped");
+    }
+    setStep(next);
+  }
+
+  // ─── Bambu Lab login ───────────────────────────────────────────────────────
   async function handleBambuLogin(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
-
     try {
-      const res = await api.bambuLoginStart(bambuEmail, bambuPassword);
-      if (res.requireCode) {
-        setStep("bambu-code");
-      } else {
-        setStep("printer");
-      }
+      await api.bambuLoginStart(bambuEmail || "demo@example.com", bambuPassword || "demo");
+      setStep("printer");
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
@@ -119,17 +133,9 @@ export default function SetupPage() {
     e.preventDefault();
     setError("");
     setBusy(true);
-
     try {
-      const res = await api.bambuLoginVerify(verifyCode);
-      if (res.codeExpired) {
-        // Re-send code
-        await api.bambuLoginStart(bambuEmail, bambuPassword);
-        setError("Code expired — a new one has been sent");
-        setVerifyCode("");
-      } else {
-        setStep("printer");
-      }
+      await api.bambuLoginVerify(verifyCode || "000000");
+      setStep("printer");
     } catch (err: any) {
       setError(err.message || "Verification failed");
     } finally {
@@ -137,16 +143,17 @@ export default function SetupPage() {
     }
   }
 
-  // ─── Printer setup ─────────────────────────────
+  // ─── Printer setup ─────────────────────────────────────────────────────────
   async function handlePrinterSetup(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setBusy(true);
-
     try {
-      await api.saveSetting("printer_ip", printerIp);
-      await api.saveSetting("printer_serial", printerSerial);
-      await api.saveSetting("printer_access_code", printerAccessCode);
+      await api.saveSetting("printer_ip", printerIp || "192.168.1.42");
+      await api.saveSetting("printer_serial", printerSerial || "01P09C450400001");
+      await api.saveSetting("printer_access_code", printerAccessCode || "12345678");
+      // Mark demo setup as complete so userExists() returns true
+      localStorage.setItem("demo_setup_complete", "1");
       setStep("done");
     } catch (err: any) {
       setError(err.message || "Failed to save printer settings");
@@ -212,13 +219,14 @@ export default function SetupPage() {
               </div>
             </div>
 
+            <DemoBanner text="Demo mode — you can type any username and password you like, or skip this step entirely. Your credentials are saved in your browser only." />
+
             <form onSubmit={handleCreateAccount} className="space-y-4">
               <Input
                 label="Username"
-                placeholder="admin"
+                placeholder="admin (or anything)"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                required
               />
               <Input
                 label="Password"
@@ -226,7 +234,6 @@ export default function SetupPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
               />
               <Input
                 label="Confirm Password"
@@ -234,7 +241,6 @@ export default function SetupPage() {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                required
               />
 
               {error && (
@@ -243,9 +249,19 @@ export default function SetupPage() {
                 </div>
               )}
 
-              <Button type="submit" loading={busy} className="w-full" size="lg">
-                Continue <ChevronRight size={16} />
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" loading={busy} className="flex-1" size="lg">
+                  Continue <ChevronRight size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => skipToStep("bambu")}
+                >
+                  <Zap size={14} /> Skip
+                </Button>
+              </div>
             </form>
           </div>
         )}
@@ -265,14 +281,15 @@ export default function SetupPage() {
               </div>
             </div>
 
+            <DemoBanner text="Demo mode — enter anything here, or just skip. No real Bambu Lab account is needed." />
+
             <form onSubmit={handleBambuLogin} className="space-y-4">
               <Input
                 label="Bambu Lab Email"
                 type="email"
-                placeholder="you@example.com"
+                placeholder="you@example.com (or anything)"
                 value={bambuEmail}
                 onChange={(e) => setBambuEmail(e.target.value)}
-                required
               />
               <Input
                 label="Bambu Lab Password"
@@ -280,7 +297,6 @@ export default function SetupPage() {
                 placeholder="••••••••"
                 value={bambuPassword}
                 onChange={(e) => setBambuPassword(e.target.value)}
-                required
               />
 
               {error && (
@@ -289,9 +305,19 @@ export default function SetupPage() {
                 </div>
               )}
 
-              <Button type="submit" loading={busy} className="w-full" size="lg">
-                Continue <ChevronRight size={16} />
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" loading={busy} className="flex-1" size="lg">
+                  Continue <ChevronRight size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => skipToStep("printer")}
+                >
+                  <Zap size={14} /> Skip
+                </Button>
+              </div>
             </form>
           </div>
         )}
@@ -311,18 +337,15 @@ export default function SetupPage() {
               </div>
             </div>
 
-            <div className="rounded-lg border border-amber-700 bg-amber-950/40 p-3 text-sm text-amber-200 mb-4">
-              Check your email for the 6-digit verification code from Bambu Lab.
-            </div>
+            <DemoBanner text="Demo mode — enter any 6 digits (e.g. 123456), or skip entirely. No real code is required." />
 
             <form onSubmit={handleBambuVerify} className="space-y-4">
               <Input
                 label="Verification Code"
                 inputMode="numeric"
-                placeholder="123456"
+                placeholder="123456 (or anything)"
                 value={verifyCode}
                 onChange={(e) => setVerifyCode(e.target.value)}
-                required
               />
 
               {error && (
@@ -331,9 +354,19 @@ export default function SetupPage() {
                 </div>
               )}
 
-              <Button type="submit" loading={busy} className="w-full" size="lg">
-                Verify <ChevronRight size={16} />
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" loading={busy} className="flex-1" size="lg">
+                  Verify <ChevronRight size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => skipToStep("printer")}
+                >
+                  <Zap size={14} /> Skip
+                </Button>
+              </div>
             </form>
           </div>
         )}
@@ -352,6 +385,8 @@ export default function SetupPage() {
                 </p>
               </div>
             </div>
+
+            <DemoBanner text="Demo mode — enter anything here, or skip. The dashboard will show mock printer data regardless." />
 
             <button
               type="button"
@@ -391,24 +426,21 @@ export default function SetupPage() {
             <form onSubmit={handlePrinterSetup} className="space-y-4">
               <Input
                 label="Printer IP Address"
-                placeholder="192.168.0.100"
+                placeholder="192.168.0.100 (or anything)"
                 value={printerIp}
                 onChange={(e) => setPrinterIp(e.target.value)}
-                required
               />
               <Input
                 label="Printer Serial Number"
-                placeholder="03919C462700XXX"
+                placeholder="03919C462700XXX (or anything)"
                 value={printerSerial}
                 onChange={(e) => setPrinterSerial(e.target.value)}
-                required
               />
               <Input
                 label="Access Code"
-                placeholder="12345678"
+                placeholder="12345678 (or anything)"
                 value={printerAccessCode}
                 onChange={(e) => setPrinterAccessCode(e.target.value)}
-                required
               />
 
               {error && (
@@ -417,9 +449,22 @@ export default function SetupPage() {
                 </div>
               )}
 
-              <Button type="submit" loading={busy} className="w-full" size="lg">
-                Finish Setup <Check size={16} />
-              </Button>
+              <div className="flex gap-3">
+                <Button type="submit" loading={busy} className="flex-1" size="lg">
+                  Finish Setup <Check size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => {
+                    localStorage.setItem("demo_setup_complete", "1");
+                    setStep("done");
+                  }}
+                >
+                  <Zap size={14} /> Skip
+                </Button>
+              </div>
             </form>
           </div>
         )}
@@ -432,8 +477,7 @@ export default function SetupPage() {
             </div>
             <h2 className="text-xl font-bold mb-2">You&apos;re all set!</h2>
             <p className="text-sm text-muted mb-6">
-              Your dashboard is ready to go. Note: You may need to restart the
-              backend service for the printer connection to use the new settings.
+              The dashboard is loaded with demo data so you can explore all features.
             </p>
             <Button size="lg" onClick={() => router.push("/dashboard")}>
               Go to Dashboard <ChevronRight size={16} />

@@ -38,14 +38,6 @@ export function SpoolIndicator({ remaining, total, color, size = 120, className 
           stroke="#2a2a32"
           strokeWidth="1.5"
         />
-        {/* subtle groove ring */}
-        <circle
-          cx={size / 2} cy={size / 2} r={outerR - 3}
-          fill="none"
-          stroke="#1e1e26"
-          strokeWidth="1"
-          strokeDasharray="3 5"
-        />
 
         {/* filament wound — smooth CSS transition only */}
         <circle

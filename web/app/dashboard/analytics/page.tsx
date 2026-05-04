@@ -145,6 +145,7 @@ export default function AnalyticsPage() {
       fontSize: 12,
     },
     labelStyle: { color: "#e8e8ed" },
+    itemStyle: { color: "#e8e8ed" },
   };
 
   return (

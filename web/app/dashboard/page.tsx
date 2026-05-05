@@ -99,6 +99,12 @@ export default function DashboardPage() {
     return end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   }
 
+  function estimatedEndTimeFromMinutes(mins?: number | null): string {
+    if (!mins || !now) return "—";
+    const end = new Date(now.getTime() + mins * 60 * 1000);
+    return end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -196,9 +202,9 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {activePrints.map((p) => {
               const printer = printers.find((d) => d.dev_id === p.device_id);
-              const endTime = estimatedEndTime();
-              const pct = status?.mc_percent ?? p.mc_percent ?? 0;
-              const remaining = status?.mc_remaining_time;
+              const remaining = p.mc_remaining_time ?? null;
+              const endTime = estimatedEndTimeFromMinutes(remaining);
+              const pct = p.mc_percent ?? 0;
 
               return (
                 <Card key={p.id} onClick={() => setSelectedPrint(p)} hoverable>
@@ -434,3 +440,4 @@ export default function DashboardPage() {
     </div>
   );
 }
+

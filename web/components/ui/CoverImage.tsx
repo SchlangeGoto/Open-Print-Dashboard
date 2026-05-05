@@ -1,9 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { cn } from "@/lib/utils";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 interface CoverImageProps {
   cover?: string | null;
@@ -13,62 +12,27 @@ interface CoverImageProps {
 }
 
 export function CoverImage({ cover, alt, className, fit = "cover" }: CoverImageProps) {
-  const [objectUrl, setObjectUrl] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!cover) {
-      setObjectUrl(null);
-      setFailed(false);
-      return;
-    }
-
-    const coverUrl = cover;
-    let revoked = false;
-    let nextUrl: string | null = null;
-
-    async function loadCover() {
-      try {
-        setFailed(false);
-        const token = localStorage.getItem("opd_token");
-        const response = await fetch(`${API_BASE}/printers/cover/${encodeURIComponent(coverUrl)}`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-        });
-
-        if (!response.ok) throw new Error("Cover failed to load");
-        const blob = await response.blob();
-        nextUrl = URL.createObjectURL(blob);
-        if (!revoked) setObjectUrl(nextUrl);
-      } catch {
-        if (!revoked) {
-          setObjectUrl(null);
-          setFailed(true);
-        }
-      }
-    }
-
-    loadCover();
-
-    return () => {
-      revoked = true;
-      if (nextUrl) URL.revokeObjectURL(nextUrl);
-    };
+    setFailed(false);
   }, [cover]);
 
-  if (!cover || failed || !objectUrl) {
+  if (!cover || failed) {
     return <div className={cn("bg-zinc-800/60", className)} aria-hidden="true" />;
   }
 
   return (
-    <div
-      role="img"
-      aria-label={alt}
-      className={cn(
-        "bg-center bg-no-repeat",
-        fit === "contain" ? "bg-contain" : "bg-cover",
-        className,
-      )}
-      style={{ backgroundImage: `url(${objectUrl})` }}
-    />
+    <div className={cn("relative overflow-hidden", className)}>
+      <Image
+        src={cover}
+        alt={alt}
+        fill
+        unoptimized
+        sizes="100vw"
+        className={cn("bg-zinc-800/60", fit === "contain" ? "object-contain" : "object-cover")}
+        onError={() => setFailed(true)}
+      />
+    </div>
   );
 }

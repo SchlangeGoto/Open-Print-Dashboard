@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { formatWeight, stockColor } from "@/lib/utils";
+import { stockColor } from "@/lib/utils";
 import { Card, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { SpoolIndicator } from "@/components/ui/SpoolIndicator";
 import { CoverImage } from "@/components/ui/CoverImage";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Thermometer, Printer as PrinterIcon, Layers } from "lucide-react";
+import { Thermometer, Printer as PrinterIcon } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [selectedPrint, setSelectedPrint] = useState<any>(null);
   const [selectedSpool, setSelectedSpool] = useState<any>(null);
   const [selectedPrinter, setSelectedPrinter] = useState<any>(null);
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -55,6 +56,7 @@ export default function DashboardPage() {
           })
         );
         setFirmware(fwMap);
+        setNow(new Date());
       } finally {
         setLoading(false);
       }
@@ -92,8 +94,8 @@ export default function DashboardPage() {
   // Estimated end time from remaining minutes
   function estimatedEndTime(): string {
     const mins = status?.mc_remaining_time;
-    if (!mins) return "—";
-    const end = new Date(Date.now() + mins * 60 * 1000);
+    if (!mins || !now) return "—";
+    const end = new Date(now.getTime() + mins * 60 * 1000);
     return end.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
   }
 

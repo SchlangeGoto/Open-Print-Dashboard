@@ -33,6 +33,7 @@ export default function AnalyticsPage() {
   const [spools, setSpools] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<Period>("weekly");
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -45,6 +46,7 @@ export default function AnalyticsPage() {
         setPrints(pr);
         setFilaments(fil);
         setSpools(sp);
+        setNow(new Date());
       } finally {
         setLoading(false);
       }
@@ -70,25 +72,26 @@ export default function AnalyticsPage() {
       .map((p) => new Date(p.start_time || p.finished_at || 0).getTime())
       .filter((t) => t > 0);
     if (timestamps.length === 0) return "0";
+    if (!now) return "0";
     const firstDate = Math.min(...timestamps);
-    const days = Math.max(1, Math.ceil((Date.now() - firstDate) / (1000 * 60 * 60 * 24)));
+    const days = Math.max(1, Math.ceil((now.getTime() - firstDate) / (1000 * 60 * 60 * 24)));
     return (prints.length / days).toFixed(1);
-  }, [prints]);
+  }, [prints, now]);
 
   // Activity data
   const activityData = useMemo(() => {
-    const now = new Date();
+    const current = now ?? new Date(0);
     let intervals: Date[];
     let labelFormat: string;
 
     if (period === "weekly") {
-      intervals = eachDayOfInterval({ start: subDays(now, 6), end: now });
+      intervals = eachDayOfInterval({ start: subDays(current, 6), end: current });
       labelFormat = "EEE";
     } else if (period === "monthly") {
-      intervals = eachDayOfInterval({ start: subDays(now, 29), end: now });
+      intervals = eachDayOfInterval({ start: subDays(current, 29), end: current });
       labelFormat = "d";
     } else {
-      intervals = Array.from({ length: 12 }, (_, i) => subMonths(now, 11 - i));
+      intervals = Array.from({ length: 12 }, (_, i) => subMonths(current, 11 - i));
       labelFormat = "MMM";
     }
 
@@ -104,7 +107,7 @@ export default function AnalyticsPage() {
       }).length;
       return { label: format(date, labelFormat), count };
     });
-  }, [prints, period]);
+  }, [prints, period, now]);
 
   // Filament usage by material
   const materialData = useMemo(() => {

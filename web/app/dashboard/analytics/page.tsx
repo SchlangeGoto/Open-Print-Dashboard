@@ -141,6 +141,7 @@ export default function AnalyticsPage() {
   }
 
   const tooltipStyle = {
+    cursor: false,
     contentStyle: {
       background: "#0f0f12",
       border: "1px solid #1c1c21",
@@ -246,7 +247,7 @@ export default function AnalyticsPage() {
               />
               <CartesianGrid vertical={false} stroke="#1c1c21" />
               <Tooltip {...tooltipStyle} />
-              <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Prints" />
+              <Bar dataKey="count" fill="#3b82f6" radius={[3, 3, 0, 0]} name="Prints" activeBar={{ stroke: "#fff", strokeWidth: 1.5 }}/>
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -279,7 +280,7 @@ export default function AnalyticsPage() {
                   {...tooltipStyle}
                   formatter={(v) => [`${v}g`, "Used"]}
                 />
-                <Bar dataKey="value" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="value" radius={[4, 4, 0, 0]} activeBar={{ stroke: "#fff", strokeWidth: 1.5 }}>
                   {materialData.map((entry, i) => (
                     <Cell key={i} fill={entry.color} />
                   ))}

@@ -142,6 +142,7 @@ export default function DashboardPage() {
                   tickFormatter={(v) => `${v}g`}
                 />
                 <Tooltip
+                  cursor={false}
                   contentStyle={{
                     background: "#0f0f12",
                     border: "1px solid #1c1c21",
@@ -155,7 +156,7 @@ export default function DashboardPage() {
                     "Remaining",
                   ]}
                 />
-                <Bar dataKey="remaining" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="remaining" radius={[4, 4, 0, 0]} activeBar={{ stroke: "#fff", strokeWidth: 1.5 }}>
                   {filamentChartData.map((entry, i) => (
                     <Cell key={i} fill={stockColor(entry.pct, entry.color)} />
                   ))}

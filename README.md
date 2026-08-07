@@ -1,7 +1,7 @@
 <div align="center">
 
 <img src="https://img.shields.io/badge/version-0.1.0-blue?style=flat-square" />
-<img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" />
+<img src="https://img.shields.io/badge/license-GNU AGPLv3-green?style=flat-square" />
 <img src="https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
 
 <br> <br>
@@ -310,7 +310,7 @@ Please open an issue first for larger changes so we can discuss the approach.
 
 ## 📄 License
 
-MIT — do whatever you want, just keep the attribution. See [LICENSE](LICENSE) for details.
+GNU AGPLv3 — See [LICENSE](LICENSE) for details.
 
 ---
 
